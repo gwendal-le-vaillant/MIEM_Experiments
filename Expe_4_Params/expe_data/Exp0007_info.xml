@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment UID="7" is_valid="false">
+    <start_date year="2019" month="5" month_name="May" day="29" day_name="Wednesday" hours="10" minutes="14"/>
+    <first_questions>
+        <data_usage allow="true"/>
+        <age>34</age>
+        <sex>male</sex>
+        <vision_impairment checked="false"/>
+        <hearing_impairment checked="false"/>
+    </first_questions>
+    <final_questions answered="false">
+        <expertise_level>2</expertise_level>
+        <methods_opinion fastest="none" most_precise="none" most_intuitive="none" preferred="none"/>
+        <similar_interface checked="false"/>
+        <similar_expe checked="false"/>
+        <remark is_empty="true"/>
+    </final_questions>
+    <tested_presets count="0"/>
+</experiment>

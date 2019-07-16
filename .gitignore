@@ -1,3 +1,6 @@
+# Fichiers d'archives (pour conversion anciens scripts traitement de données)
+ExperimentsDataProcessing_archive/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment UID="23" is_valid="true">
+    <start_date year="2019" month="7" month_name="July" day="3" day_name="Wednesday" hours="15" minutes="36"/>
+    <first_questions>
+        <data_usage allow="true"/>
+        <age>26</age>
+        <sex>female</sex>
+        <vision_impairment checked="false"/>
+        <hearing_impairment checked="false"/>
+    </first_questions>
+    <final_questions answered="true">
+        <expertise_level>3</expertise_level>
+        <methods_opinion fastest="interpolation" most_precise="fader" most_intuitive="interpolation" preferred="interpolation"/>
+        <similar_interface checked="true">Amusing</similar_interface>
+        <similar_expe checked="false"/>
+        <remark is_empty="false">J&apos;entendais que je n&apos;étais pas sur le bon son, mais je n&apos;arrivais pas à trouver quel slider/combinaison de sliders utiliser pour arriver sur le &quot;bon&quot; son.</remark>
+    </final_questions>
+    <tested_presets count="22">
+        <preset synth_id="-2" name="[T] Wurli" from_interpolation="false" appearance_index="-2" is_valid="true" samples_count="276"/>
+        <preset synth_id="-1" name="[T] Arpesque" from_interpolation="true" appearance_index="-1" is_valid="true" samples_count="1253"/>
+        <preset synth_id="2" name="[2] DabDat" from_interpolation="true" appearance_index="0" is_valid="true" samples_count="1919"/>
+        <preset synth_id="4" name="[4] Hypno" from_interpolation="true" appearance_index="1" is_valid="true" samples_count="1105"/>
+        <preset synth_id="0" name="[0] ThunderBass" from_interpolation="true" appearance_index="2" is_valid="true" samples_count="1460"/>
+        <preset synth_id="9" name="[9] AntiqueStr" from_interpolation="true" appearance_index="3" is_valid="true" samples_count="1040"/>
+        <preset synth_id="6" name="[6] Piano" from_interpolation="false" appearance_index="4" is_valid="true" samples_count="949"/>
+        <preset synth_id="1" name="[1] Shamisen" from_interpolation="true" appearance_index="5" is_valid="true" samples_count="1201"/>
+        <preset synth_id="9" name="[9] AntiqueStr" from_interpolation="false" appearance_index="6" is_valid="true" samples_count="686"/>
+        <preset synth_id="8" name="[8] SubGamelan" from_interpolation="false" appearance_index="7" is_valid="true" samples_count="557"/>
+        <preset synth_id="4" name="[4] Hypno" from_interpolation="false" appearance_index="8" is_valid="true" samples_count="284"/>
+        <preset synth_id="1" name="[1] Shamisen" from_interpolation="false" appearance_index="9" is_valid="true" samples_count="352"/>
+        <preset synth_id="3" name="[3] TriOsc" from_interpolation="true" appearance_index="10" is_valid="true" samples_count="729"/>
+        <preset synth_id="5" name="[5] MoodySky" from_interpolation="true" appearance_index="11" is_valid="true" samples_count="1456"/>
+        <preset synth_id="7" name="[7] DX7block" from_interpolation="true" appearance_index="12" is_valid="true" samples_count="978"/>
+        <preset synth_id="6" name="[6] Piano" from_interpolation="true" appearance_index="13" is_valid="true" samples_count="843"/>
+        <preset synth_id="0" name="[0] ThunderBass" from_interpolation="false" appearance_index="14" is_valid="true" samples_count="344"/>
+        <preset synth_id="3" name="[3] TriOsc" from_interpolation="false" appearance_index="15" is_valid="true" samples_count="356"/>
+        <preset synth_id="2" name="[2] DabDat" from_interpolation="false" appearance_index="16" is_valid="true" samples_count="404"/>
+        <preset synth_id="7" name="[7] DX7block" from_interpolation="false" appearance_index="17" is_valid="true" samples_count="342"/>
+        <preset synth_id="8" name="[8] SubGamelan" from_interpolation="true" appearance_index="18" is_valid="true" samples_count="658"/>
+        <preset synth_id="5" name="[5] MoodySky" from_interpolation="false" appearance_index="19" is_valid="true" samples_count="1105"/>
+    </tested_presets>
+</experiment>

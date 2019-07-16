@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiments>
+    <count>29</count>
+    <tcp ip="10.97.198.176" port="8031"/>
+    <osc>
+        <udp port="18011"/>
+    </osc>
+    <synths total_count="12" trials_count="2">
+        <synth id="-2" name="[T] Wurli">
+            <parameters>
+                <bounds min="0" max="1" scene_base_index="1"/>
+                <parameter id="1" target_value="0.055"/>
+                <parameter id="2" target_value="0.21299999999999999"/>
+                <parameter id="3" target_value="0.10199999999999999"/>
+                <parameter id="4" target_value="0.63"/>
+            </parameters>
+        </synth>
+        <synth id="-1" name="[T] Arpesque">
+            <parameters>
+                <bounds min="0" max="1" scene_base_index="1"/>
+                <parameter id="1" target_value="0.76400000000000001"/>
+                <parameter id="2" target_value="0"/>
+                <parameter id="3" target_value="0.23599999999999999"/>
+                <parameter id="4" target_value="0"/>
+            </parameters>
+        </synth>
+        <synth id="0" name="[0] ThunderBass">
+            <parameters>
+                <bounds min="0" max="0.75" scene_base_index="5"/>
+                <parameter id="1" target_value="0"/>
+                <parameter id="2" target_value="0"/>
+                <parameter id="3" target_value="0.21299999999999999"/>
+                <parameter id="4" target_value="0.53500000000000003"/>
+            </parameters>
+        </synth>
+        <synth id="1" name="[1] Shamisen">
+            <parameters>
+                <bounds min="0.25" max="1" scene_base_index="17"/>
+                <parameter id="1" target_value="0.70899999999999996"/>
+                <parameter id="2" target_value="0.252"/>
+                <parameter id="3" target_value="0.54300000000000004"/>
+                <parameter id="4" target_value="0.252"/>
+            </parameters>
+        </synth>
+        <synth id="2" name="[2] DabDat">
+            <parameters>
+                <bounds min="0" max="1" scene_base_index="1"/>
+                <parameter id="1" target_value="0"/>
+                <parameter id="2" target_value="0"/>
+                <parameter id="3" target_value="0.22"/>
+                <parameter id="4" target_value="0.78000000000000003"/>
+            </parameters>
+        </synth>
+        <synth id="3" name="[3] TriOsc">
+            <parameters>
+                <bounds min="0.25" max="0.75" scene_base_index="21"/>
+                <parameter id="1" target_value="0.54300000000000004"/>
+                <parameter id="2" target_value="0.25"/>
+                <parameter id="3" target_value="0.25"/>
+                <parameter id="4" target_value="0.45700000000000002"/>
+            </parameters>
+        </synth>
+        <synth id="4" name="[4] Hypno">
+            <parameters>
+                <bounds min="0.25" max="0.75" scene_base_index="21"/>
+                <parameter id="1" target_value="0.26800000000000002"/>
+                <parameter id="2" target_value="0.59799999999999998"/>
+                <parameter id="3" target_value="0.32300000000000001"/>
+                <parameter id="4" target_value="0.307"/>
+            </parameters>
+        </synth>
+        <synth id="5" name="[5] MoodySky">
+            <parameters>
+                <bounds min="0.25" max="1" scene_base_index="17"/>
+                <parameter id="1" target_value="0.252"/>
+                <parameter id="2" target_value="1"/>
+                <parameter id="3" target_value="0.252"/>
+                <parameter id="4" target_value="0.252"/>
+            </parameters>
+        </synth>
+        <synth id="6" name="[6] Piano">
+            <parameters>
+                <bounds min="0" max="1" scene_base_index="1"/>
+                <parameter id="1" target_value="1"/>
+                <parameter id="2" target_value="0"/>
+                <parameter id="3" target_value="0"/>
+                <parameter id="4" target_value="0"/>
+            </parameters>
+        </synth>
+        <synth id="7" name="[7] DX7block">
+            <parameters>
+                <bounds min="0.25" max="0.75" scene_base_index="21"/>
+                <parameter id="1" target_value="0.25"/>
+                <parameter id="2" target_value="0.40899999999999997"/>
+                <parameter id="3" target_value="0.59099999999999997"/>
+                <parameter id="4" target_value="0.25"/>
+            </parameters>
+        </synth>
+        <synth id="8" name="[8] SubGamelan">
+            <parameters>
+                <bounds min="0.25" max="1" scene_base_index="17"/>
+                <parameter id="1" target_value="0.89000000000000001"/>
+                <parameter id="2" target_value="0.252"/>
+                <parameter id="3" target_value="0.36199999999999999"/>
+                <parameter id="4" target_value="0.252"/>
+            </parameters>
+        </synth>
+        <synth id="9" name="[9] AntiqueStr">
+            <parameters>
+                <bounds min="0" max="1" scene_base_index="1"/>
+                <parameter id="1" target_value="0.64600000000000002"/>
+                <parameter id="2" target_value="0"/>
+                <parameter id="3" target_value="0.35399999999999998"/>
+                <parameter id="4" target_value="0"/>
+            </parameters>
+        </synth>
+    </synths>
+</experiments>

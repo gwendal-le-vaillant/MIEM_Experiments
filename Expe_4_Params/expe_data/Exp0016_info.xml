@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment UID="16" is_valid="true">
+    <start_date year="2019" month="6" month_name="June" day="24" day_name="Monday" hours="13" minutes="8"/>
+    <first_questions>
+        <data_usage allow="true"/>
+        <age>33</age>
+        <sex>male</sex>
+        <vision_impairment checked="false"/>
+        <hearing_impairment checked="false"/>
+    </first_questions>
+    <final_questions answered="true">
+        <expertise_level>3</expertise_level>
+        <methods_opinion fastest="interpolation" most_precise="interpolation" most_intuitive="interpolation" preferred="interpolation"/>
+        <similar_interface checked="true">KORG KAOSS pad</similar_interface>
+        <similar_expe checked="false"/>
+        <remark is_empty="true"/>
+    </final_questions>
+    <tested_presets count="22">
+        <preset synth_id="-2" name="[T] Wurli" from_interpolation="false" appearance_index="-2" is_valid="true" samples_count="421"/>
+        <preset synth_id="-1" name="[T] Arpesque" from_interpolation="true" appearance_index="-1" is_valid="true" samples_count="1499"/>
+        <preset synth_id="0" name="[0] ThunderBass" from_interpolation="false" appearance_index="0" is_valid="true" samples_count="484"/>
+        <preset synth_id="8" name="[8] SubGamelan" from_interpolation="true" appearance_index="1" is_valid="true" samples_count="371"/>
+        <preset synth_id="9" name="[9] AntiqueStr" from_interpolation="false" appearance_index="2" is_valid="true" samples_count="503"/>
+        <preset synth_id="2" name="[2] DabDat" from_interpolation="true" appearance_index="3" is_valid="true" samples_count="1010"/>
+        <preset synth_id="1" name="[1] Shamisen" from_interpolation="true" appearance_index="4" is_valid="true" samples_count="597"/>
+        <preset synth_id="6" name="[6] Piano" from_interpolation="false" appearance_index="5" is_valid="true" samples_count="287"/>
+        <preset synth_id="4" name="[4] Hypno" from_interpolation="true" appearance_index="6" is_valid="true" samples_count="335"/>
+        <preset synth_id="3" name="[3] TriOsc" from_interpolation="false" appearance_index="7" is_valid="true" samples_count="257"/>
+        <preset synth_id="7" name="[7] DX7block" from_interpolation="false" appearance_index="8" is_valid="true" samples_count="145"/>
+        <preset synth_id="9" name="[9] AntiqueStr" from_interpolation="true" appearance_index="9" is_valid="true" samples_count="528"/>
+        <preset synth_id="4" name="[4] Hypno" from_interpolation="false" appearance_index="10" is_valid="true" samples_count="272"/>
+        <preset synth_id="0" name="[0] ThunderBass" from_interpolation="true" appearance_index="11" is_valid="true" samples_count="938"/>
+        <preset synth_id="6" name="[6] Piano" from_interpolation="true" appearance_index="12" is_valid="true" samples_count="621"/>
+        <preset synth_id="7" name="[7] DX7block" from_interpolation="true" appearance_index="13" is_valid="true" samples_count="436"/>
+        <preset synth_id="3" name="[3] TriOsc" from_interpolation="true" appearance_index="14" is_valid="true" samples_count="553"/>
+        <preset synth_id="1" name="[1] Shamisen" from_interpolation="false" appearance_index="15" is_valid="true" samples_count="102"/>
+        <preset synth_id="8" name="[8] SubGamelan" from_interpolation="false" appearance_index="16" is_valid="true" samples_count="279"/>
+        <preset synth_id="2" name="[2] DabDat" from_interpolation="false" appearance_index="17" is_valid="true" samples_count="452"/>
+        <preset synth_id="5" name="[5] MoodySky" from_interpolation="false" appearance_index="18" is_valid="true" samples_count="441"/>
+        <preset synth_id="5" name="[5] MoodySky" from_interpolation="true" appearance_index="19" is_valid="true" samples_count="143"/>
+    </tested_presets>
+</experiment>

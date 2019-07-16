@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment UID="5" is_valid="false">
+    <start_date year="2019" month="5" month_name="May" day="13" day_name="Monday" hours="14" minutes="48"/>
+    <first_questions>
+        <data_usage allow="true"/>
+        <age>18</age>
+        <sex>female</sex>
+        <vision_impairment checked="false"/>
+        <hearing_impairment checked="false"/>
+    </first_questions>
+    <final_questions answered="false">
+        <expertise_level>2</expertise_level>
+        <methods_opinion fastest="none" most_precise="none" most_intuitive="none" preferred="none"/>
+        <similar_interface checked="false"/>
+        <similar_expe checked="false"/>
+        <remark is_empty="true"/>
+    </final_questions>
+    <tested_presets count="2">
+        <preset synth_id="-2" name="[T] Wurli" from_interpolation="false" appearance_index="-2" is_valid="true" samples_count="895"/>
+        <preset synth_id="-1" name="[T] Arpesque" from_interpolation="true" appearance_index="-1" is_valid="true" samples_count="683"/>
+    </tested_presets>
+</experiment>
