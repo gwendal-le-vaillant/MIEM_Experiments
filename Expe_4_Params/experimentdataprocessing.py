@@ -51,7 +51,7 @@ class Experiment:
         for i in range(all_subjects_count):
             subject_info_et = xet.parse(self.get_subject_info_filename(i)).getroot()
             subject_data = np.genfromtxt(self.get_subject_data_filename(i), delimiter=";")
-            self.all_subjects.append(Subject(subject_info_et, subject_data, self.global_params))
+            self.all_subjects.append(Subject(subject_info_et, subject_data, self.global_params, self.synths))
         self.subjects = [subject for subject in self.all_subjects if subject.is_valid]
 
         # display at the very end of loading (some data might be considered unvalid)
@@ -109,9 +109,11 @@ class Synth:
         self.name = etree.attrib["name"]
         self.id = int(etree.attrib["id"])
         self.index = self.id + global_params.synth_id_offset
-        # min/max values for all parameters
-        self.min_value = float(etree.find("parameters").find("bounds").attrib["min"])
-        self.max_value = float(etree.find("parameters").find("bounds").attrib["max"])
+        # min/max values : for now, they are the for all parameters
+        self.min_values = np.full((global_params.params_count, 1),
+                                  float(etree.find("parameters").find("bounds").attrib["min"]))
+        self.max_values = np.full((global_params.params_count, 1),
+                                  float(etree.find("parameters").find("bounds").attrib["max"]))
         # target value of each parameter
         self.target_values = np.zeros(global_params.params_count, dtype=np.double)
         for child in etree.find("parameters"):
@@ -140,7 +142,7 @@ class Subject:
     Pour les presets de test la moitié de l'espace sera utilisé ; pour les autres,
     si l'expérience est complète, toutes les cases seront réellement utilisées
     """
-    def __init__(self, info_et, raw_data, global_params):
+    def __init__(self, info_et, raw_data, global_params, synths):
         self.global_params = global_params # internal reference backup
         # - - - - - - - - Subject Info from XML file - - - - - - - -
         self.uid = int(info_et.attrib["UID"])
@@ -177,7 +179,7 @@ class Subject:
         tested_presets_et = info_et.find("tested_presets")
         self.tested_cycles_count = int(tested_presets_et.attrib["count"])
         """ int: the number of cycles (presets) that were actually tested and recorded. Some might be unvalided later"""
-        self.is_synth_valid = np.zeros((self.synths_count, 2), dtype=np.bool)
+        self.is_cycle_valid = np.zeros((self.synths_count, 2), dtype=np.bool)
         self.synth_indexes_in_appearance_order = np.full((self.cycles_count, 1), -1000)
         self.synth_types_in_appearance_order   = np.full((self.cycles_count, 1), -1000)
         # We are going to access to cycles' child nodes by index, in order to throw errors if data is inconsistent
@@ -188,10 +190,65 @@ class Subject:
                 synth_index = int(tested_presets_et[i].attrib["synth_id"]) + self.synth_id_offset
                 # OK car renvoie 0 ou 1
                 fader_or_interpolation = strtobool(tested_presets_et[i].attrib["from_interpolation"])
-                self.is_synth_valid[synth_index, fader_or_interpolation] = True
+                self.is_cycle_valid[synth_index, fader_or_interpolation] = True
 
         # - - - - - - - - Actual Data, from CSV file - - - - - - - -
-        self.raw_data = raw_data
+        # pre-allocation of data lists - will be a 2,5 D list itself (synth, interp, paramId),
+        # but each actual element of the list will be a numpy matrix (recorded time and values)
+        self.data = [ [ [ [] for k in range(0, self.params_count) ] for jbis in range(0, 2) ] for j in range(0, self.synths_count)]
+        # we do not retrieve the headers' line. Header is :
+        #   synth_id  ;  from_interpolation  ;  parameter  ;  time  ;  value
+        self.raw_data = raw_data[1:raw_data.shape[0]-1, ...]
+        # decomposition of the main data matrix into several matrices, each
+        # representing a cycle of the experiment
+        last_synth_id = -1000  # for detecting a new cycle in the main matrix
+        last_from_interp = -1000  # idem
+        last_param_id = -1000  # for detecting a new parameter (they are stored one after the other)
+        last_sub_matrix_first_row = -1  # unvalid value
+        # the whole matrix must be read, line by line
+        for i in range(0, self.raw_data.shape[0]):
+            # new values stored for each new line
+            new_synth_id = int(round(self.raw_data[i, 0])) + global_params.synth_id_offset
+            new_from_interp = int(round(self.raw_data[i, 1]))
+            new_param_id = int(round(self.raw_data[i, 2])) - 1  # params ids start from 1 in the CSV file
+            # detection of a new submatrix, if anything changed
+            if (last_synth_id != new_synth_id) or (last_from_interp != new_from_interp) or (last_param_id != new_param_id):
+                # copy of the last sub-matrix
+                if last_sub_matrix_first_row >= 0:  # we skip the very first new block detected...
+                    self.data[last_synth_id][last_from_interp][last_param_id] \
+                        = self.raw_data[last_sub_matrix_first_row:i, [3, 4]]  # i bound is excluded
+                # and we start reading the next one
+                last_from_interp = new_from_interp
+                last_synth_id = new_synth_id
+                last_param_id = new_param_id
+                last_sub_matrix_first_row = i
+        # processing of the last block (its end is not detected within the for-loop)
+        self.data[last_synth_id][last_from_interp][last_param_id]\
+            = self.raw_data[last_sub_matrix_first_row:self.raw_data.shape[0], [3, 4]]
+
+        # - - - - - - - - Pre-processing of loaded data : 3 steps - - - - - - - -
+        # Warning: for loops do not work by reference.... (nested lists are copied)
+        for j in range(0, len(self.data)):
+            for j2 in range(0, len(self.data[j])):
+                if self.is_cycle_valid[j, j2]:
+                    final_time = max([ param_data[:, 0].max() for param_data in self.data[j][j2] ])
+                    for k in range(0, len(self.data[j][j2])):
+                        # Step 1 : curves closing : addition of values on t=0 and final time (to be searched for)
+                        self.data[j][j2][k] = np.vstack( ([0, self.data[j][j2][k][0, 1]],
+                                                          self.data[j][j2][k]) )
+                        self.data[j][j2][k] = np.vstack( (self.data[j][j2][k],
+                                                          [final_time, self.data[j][j2][k][self.data[j][j2][k].shape[0]-1, 1]] ) )
+                        # Step 2 : time conversion from milliseconds to seconds
+                        self.data[j][j2][k][:, 0] *= 0.001
+                        # Step 3 : centering of each parameter curve around its target value
+                        # (the values then become the error), and errors normalization
+                        self.data[j][j2][k][:, 1] -= synths[j].target_values[k]  # direct centering at first
+                        samples_count = self.data[j][j2][k].shape[0] # warning : dont use again if data sizes change again
+                        normalization_matrix = np.hstack( (np.ones((samples_count, 1)),
+                                                           np.full((samples_count, 1), 1.0/(synths[j].max_values[k] - synths[j].min_values[k]))) )
+                        # normalization matrix made for working with "Hadamard" term-by-term matrix multiplication
+                        # -> this product is the default with numpy arrays (numpy matrices are not actually common...)
+                        self.data[j][j2][k] *= normalization_matrix
 
     @ property
     def synths_count(self):
@@ -204,6 +261,10 @@ class Subject:
     @ property
     def synth_id_offset(self):
         return self.global_params.synth_id_offset
+
+    @ property
+    def params_count(self):
+        return self.global_params.params_count
 
 
 class MethodsOpinion:
