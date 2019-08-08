@@ -6,6 +6,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Les fichiers PICKLE seront re-crées par les scripts, si besoinY
+*.pickle
+
 # C extensions
 *.so
 

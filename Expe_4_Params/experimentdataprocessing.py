@@ -1,4 +1,6 @@
 
+import time
+import pickle
 # xet = Xml Element Tree. In the code : _et suffix means Element Tree
 import xml.etree.ElementTree as xet
 from distutils.util import strtobool
@@ -11,6 +13,58 @@ class MethodType(IntEnum):
     NONE = -1
     FADER = 0   # independant control of independant parameters
     INTERP = 1  # interpolation between presets
+
+
+def score_expe4(e, t, allowed_time):
+    """ Score function implemented in the '4 parameters' MIEM experiment.
+    e is the norm-1 parametric error, t is the total research duration. """
+
+    # At first, we consider that the score is based on 2 independant performances: research time and final precision
+    precision_term = 1.0 - 2.0*e  # null or negative if norm-1 error > 0.5
+    time_term = 1.0 - t / (allowed_time*1.5)  # always positive, and is at least 1/3
+    independant_score = precision_term + 0.70 * time_term  # might be negative if precision is very bad
+    independant_score = np.clip(independant_score, 0.0, np.inf)
+
+    # Then, as the error is the most important, we multiply this temp result with a precision factor
+    precision_factor = 1.0 - 1.3 * e  # null or negative if error >= 0.77 (which is a huge error)
+    final_score = 0.65 * independant_score * precision_factor  # 0.65 normalization factor
+
+    final_score = np.clip(final_score, 0.0, 1.0);
+    return final_score
+
+
+def load_experiment_once_a_day(data_path, force_reload=False):
+    """
+    Optimized loading (XML/CSV files will be parsed and pickled only once a day)
+
+    :param data_path: the path to XML and CSV files of this experiment
+    :param force_reload: indicates whether the experiment must be reloaded, even if recent pickeled data is available
+    :return: the Experiment class instance
+    """
+    pickle_filename = "{}/python_experiment_class.pickle".format(data_path)
+    try:
+        pickle_file = open(pickle_filename, mode='rb')
+        print("Loading data from previous pickled file...")
+        experiment_instance = pickle.load(pickle_file, encoding='latin-1')
+        is_pickle_file_outdated = experiment_instance.construction_time < (time.time() - (3600 * 24) )
+        if is_pickle_file_outdated:
+            print("Pickled data is outdated.")
+        else:
+            delta_time = time.time() - experiment_instance.construction_time
+            print("Ok, pickle data has been constructed {:2.1f} hours ago.".format(delta_time / 3600.0))
+    except FileNotFoundError:
+        print("No pickle file found -> loading fresh data from CSV and XML files")
+        is_pickle_file_outdated = True
+    except Exception:
+        print("Unknown exception: pickle data file seems corrupted. Reloading experiment.")
+        is_pickle_file_outdated = True
+
+    if force_reload or is_pickle_file_outdated:
+        experiment_instance = Experiment(data_path)
+        pickle_file = open(pickle_filename, mode='wb')
+        pickle.dump(experiment_instance, pickle_file, protocol=pickle.DEFAULT_PROTOCOL)
+
+    return experiment_instance
 
 
 class Experiment:
@@ -32,6 +86,7 @@ class Experiment:
         """ This constructors loads all data from files. This might take some
         time. """
         self.path_to_data = path_to_data
+        self.construction_time = time.time()
         print("--------------------------------")
         print("Loading experiments data from folder '{}'...".format(path_to_data))
 
@@ -249,6 +304,17 @@ class Subject:
                         # normalization matrix made for working with "Hadamard" term-by-term matrix multiplication
                         # -> this product is the default with numpy arrays (numpy matrices are not actually common...)
                         self.data[j][j2][k] *= normalization_matrix
+
+        # - - - - - - - - Processing of loaded data : ??????? steps - - - - - - - -
+        # pre-allocation of perfs lists - will be a 1,5 D list itself (synth, interp),
+        # but each actual element of the list will be a single perf
+        self.perfs = [ [ [] for jbis in range(0, 2) ] for j in range(0, self.synths_count)]
+        for j in range(0, len(self.data)):
+            for j2 in range(0, len(self.data[j])):
+                if self.is_cycle_valid[j, j2]:
+                    for k in range(0, len(self.data[j][j2])):
+                        # Step 1 : performance measured at the end of each cycle
+
 
     @ property
     def synths_count(self):
