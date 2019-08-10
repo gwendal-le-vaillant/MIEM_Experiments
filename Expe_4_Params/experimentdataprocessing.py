@@ -42,22 +42,23 @@ def load_experiment_once_a_day(data_path, force_reload=False):
     :return: the Experiment class instance
     """
     pickle_filename = "{}/python_experiment_class.pickle".format(data_path)
-    try:
-        pickle_file = open(pickle_filename, mode='rb')
-        print("Loading data from previous pickled file...")
-        experiment_instance = pickle.load(pickle_file, encoding='latin-1')
-        is_pickle_file_outdated = experiment_instance.construction_time < (time.time() - (3600 * 24) )
-        if is_pickle_file_outdated:
-            print("Pickled data is outdated.")
-        else:
-            delta_time = time.time() - experiment_instance.construction_time
-            print("Ok, pickle data has been constructed {:2.1f} hours ago.".format(delta_time / 3600.0))
-    except FileNotFoundError:
-        print("No pickle file found -> loading fresh data from CSV and XML files")
-        is_pickle_file_outdated = True
-    except Exception:
-        print("Unknown exception: pickle data file seems corrupted. Reloading experiment.")
-        is_pickle_file_outdated = True
+    if not force_reload:
+        try:
+            pickle_file = open(pickle_filename, mode='rb')
+            print("Loading data from previous pickled file...")
+            experiment_instance = pickle.load(pickle_file, encoding='latin-1')
+            is_pickle_file_outdated = experiment_instance.construction_time < (time.time() - (3600 * 24) )
+            if is_pickle_file_outdated:
+                print("Pickled data is outdated.")
+            else:
+                delta_time = time.time() - experiment_instance.construction_time
+                print("Ok, pickle data has been constructed {:2.1f} hours ago.".format(delta_time / 3600.0))
+        except FileNotFoundError:
+            print("No pickle file found -> loading fresh data from CSV and XML files")
+            is_pickle_file_outdated = True
+        except Exception:
+            print("Unknown exception: pickle data file seems corrupted. Reloading experiment.")
+            is_pickle_file_outdated = True
 
     if force_reload or is_pickle_file_outdated:
         experiment_instance = Experiment(data_path)
@@ -108,10 +109,11 @@ class Experiment:
             subject_data = np.genfromtxt(self.get_subject_data_filename(i), delimiter=";")
             self.all_subjects.append(Subject(subject_info_et, subject_data, self.global_params, self.synths))
         self.subjects = [subject for subject in self.all_subjects if subject.is_valid]
+        for i in range(len(self.subjects)):
+            self.subjects[i].set_index(i)
 
         # display at the very end of loading (some data might be considered unvalid)
         print("...Data loading finished.")
-        print(self)
         print("--------------------------------")
 
     def __str__(self):
@@ -137,7 +139,7 @@ class GlobalParameters:
         self.synths_count = int(synths_et.attrib["total_count"])
         self.synths_trial_count = int(synths_et.attrib["trials_count"])
 
-        self.cycles_count = (2 * self.synths_non_trial_count) - self.synths_trial_count
+        self.cycles_count = (2 * self.synths_non_trial_count) + self.synths_trial_count
         """ int: The number of cycles (called presets in the C++ code) that each subject should have performed
         within a full experiment.
         Contrainte : 1 essai pour chaque synthé de test, puis 2 essais pour chaque synthé réel
@@ -199,6 +201,7 @@ class Subject:
     """
     def __init__(self, info_et, raw_data, global_params, synths):
         self.global_params = global_params # internal reference backup
+        self.index = -1 # to be defined after construction of all subjects
         # - - - - - - - - Subject Info from XML file - - - - - - - -
         self.uid = int(info_et.attrib["UID"])
         self.is_valid = bool(strtobool(info_et.attrib["is_valid"]))
@@ -211,7 +214,7 @@ class Subject:
             self.is_valid = False
         # also unvalid in case of hearing problems (usual vision troubles not considered critical)
         if bool(strtobool(first_questions_et.find("vision_impairment").attrib["checked"])):
-            pass # print("[Subject {}]: vision impairment '{}'".format(self.uid, first_questions_et.find("vision_impairment").text))
+            pass  # print("[Subject {}]: vision impairment '{}'".format(self.uid, first_questions_et.find("vision_impairment").text))
         if bool(strtobool(first_questions_et.find("hearing_impairment").attrib["checked"])):
             print("[Subject {}]: hearing impairment '{}'".format(self.uid, first_questions_et.find("hearing_impairment").text))
             self.is_valid = False
@@ -232,11 +235,14 @@ class Subject:
         self.similar_experiment = final_questions_et.find("similar_expe").text
         # - - - - - - - - Data Info from XML file - - - - - - - -
         tested_presets_et = info_et.find("tested_presets")
+        """ int: The number of cycles (presets) that were actually tested and recorded. Some might be unvalided later"""
         self.tested_cycles_count = int(tested_presets_et.attrib["count"])
-        """ int: the number of cycles (presets) that were actually tested and recorded. Some might be unvalided later"""
+        """ 2d-array indicating wether a cycle (accessible via synth index / search type) is valid or not"""
         self.is_cycle_valid = np.zeros((self.synths_count, 2), dtype=np.bool)
-        self.synth_indexes_in_appearance_order = np.full((self.cycles_count, 1), -1000)
-        self.synth_types_in_appearance_order   = np.full((self.cycles_count, 1), -1000)
+        """ The n-th element of this list gives the index of the n-th synth research """
+        self.synth_indexes_in_appearance_order = [-1000] * self.cycles_count
+        """ The n-th element of this list gives the type of the n-th synth research (fader or interpolation) """
+        self.search_types_in_appearance_order  = [-1000] * self.cycles_count
         # We are going to access to cycles' child nodes by index, in order to throw errors if data is inconsistent
         for i in range(self.tested_cycles_count):
             is_valid = bool(strtobool(tested_presets_et[i].attrib["is_valid"]))
@@ -246,6 +252,9 @@ class Subject:
                 # OK car renvoie 0 ou 1
                 fader_or_interpolation = strtobool(tested_presets_et[i].attrib["from_interpolation"])
                 self.is_cycle_valid[synth_index, fader_or_interpolation] = True
+                # backup of synth index and type, in appearance order
+                self.synth_indexes_in_appearance_order[i] = synth_index
+                self.search_types_in_appearance_order[i] = fader_or_interpolation
 
         # - - - - - - - - Actual Data, from CSV file - - - - - - - -
         # pre-allocation of data lists - will be a 2,5 D list itself (synth, interp, paramId),
@@ -306,14 +315,19 @@ class Subject:
                         self.data[j][j2][k] *= normalization_matrix
 
         # - - - - - - - - Processing of loaded data : ??????? steps - - - - - - - -
-        # pre-allocation of perfs lists - will be a 1,5 D list itself (synth, interp),
-        # but each actual element of the list will be a single perf
-        self.perfs = [ [ [] for jbis in range(0, 2) ] for j in range(0, self.synths_count)]
+        # pre-allocation of E, T and P lists - will be 1,5 D lists (synth, interp)
+        self.E = np.full((self.synths_count, 2), -1.0)
+        self.T = np.full((self.synths_count, 2), -global_params.allowed_time)
+        self.P = np.full((self.synths_count, 2), -1.0)
         for j in range(0, len(self.data)):
             for j2 in range(0, len(self.data[j])):
                 if self.is_cycle_valid[j, j2]:
-                    for k in range(0, len(self.data[j][j2])):
-                        # Step 1 : performance measured at the end of each cycle
+                    # Step 1 : performance measured at the end of each cycle. Sum of all abs errors, normalized
+                    # NUMPY : pas un moyen + simple d'aller chercher la fin d'un array ?
+                    self.T[j, j2] = self.data[j][j2][0][-1, 0]  # last recorded time of 1st param
+                    self.E[j, j2] = sum( [ abs(param[-1, 1]) for param in self.data[j][j2] ] )\
+                                    / global_params.params_count
+                    self.P[j, j2] = score_expe4(self.E[j, j2], self.T[j, j2], global_params.allowed_time)
 
 
     @ property
@@ -331,6 +345,9 @@ class Subject:
     @ property
     def params_count(self):
         return self.global_params.params_count
+
+    def set_index(self, new_index):
+        self.index = new_index
 
 
 class MethodsOpinion:
