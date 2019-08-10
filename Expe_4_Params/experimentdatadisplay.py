@@ -83,32 +83,32 @@ class SubjectPerformancesVisualizer:
         self.update_plot(subject)
 
     def update_plot(self, subject):
-        plt.suptitle("Durations T, errors E and performances P for subject $i={}$".format(subject.index))
+        plt.suptitle("Durations T, errors E and performances R for subject $i={}$".format(subject.index))
 
-        synths_count = self.expe.global_params.synths_count
-        synths_indexes = np.arange(synths_count)
+        synths_ids = self.expe.global_params.get_synths_ids()
 
         self.axes[0].clear()
         self.axes[0].set(ylabel="Error $E$")
-        self.axes[0].scatter(synths_indexes, subject.E[:, 0], marker='s')
-        self.axes[0].scatter(np.arange(subject.global_params.synths_count), subject.E[:, 1], marker='D')
+        self.axes[0].scatter(synths_ids, subject.E[:, 0], marker='s')
+        self.axes[0].scatter(synths_ids, subject.E[:, 1], marker='D')
         self.axes[0].set_ylim([0, 1])  # hides the -1 unvalid values
+        self.axes[0].legend(['Faders', 'Interp'], loc="best")
 
         self.axes[1].clear()
         self.axes[1].set(ylabel="Research duration $T$")
-        self.axes[1].scatter(synths_indexes, subject.T[:, 0], marker='s')
-        self.axes[1].scatter(np.arange(subject.global_params.synths_count), subject.T[:, 1], marker='D')
+        self.axes[1].scatter(synths_ids, subject.T[:, 0], marker='s')
+        self.axes[1].scatter(synths_ids, subject.T[:, 1], marker='D')
         self.axes[1].set_ylim([0, subject.global_params.allowed_time])  # hides the -1 unvalid values
 
         self.axes[2].clear()
-        self.axes[2].set(ylabel="Performance $P$", xlabel="Synth ID")
-        self.axes[2].scatter(synths_indexes, subject.P[:, 0], marker='s')
-        self.axes[2].scatter(np.arange(subject.global_params.synths_count), subject.P[:, 1], marker='D')
+        self.axes[2].set(ylabel="Performance $R$", xlabel="Synth ID")
+        self.axes[2].scatter(synths_ids, subject.R[:, 0], marker='s')
+        self.axes[2].scatter(synths_ids, subject.R[:, 1], marker='D')
         self.axes[2].set_ylim([0, 1])  # hides the -1 unvalid values
-        self.axes[2].set_xlim([-0.5, synths_count-0.5])
-        self.axes[2].xaxis.set_ticks(synths_indexes)
+        self.axes[2].set_xlim([min(synths_ids)-0.5, max(synths_ids)+0.5])
+        self.axes[2].xaxis.set_ticks(synths_ids)
 
-        plt.savefig("{}/Perf_subject_{:02d}.pdf".format(figures_save_folder, subject.index))
+        plt.savefig("{}/Subjects/Perf_subject_{:02d}.pdf".format(figures_save_folder, subject.index))
 
 
 class SubjectCurvesVisualizer:
@@ -186,6 +186,56 @@ class SubjectCurvesVisualizer:
         self.axes[0, 0].set_ylim([-1, 1])
         self.axes[0, 0].set_xlim([0, self.expe.global_params.allowed_time])
 
-        plt.draw()  # or does not update graphically...
+        # printing of the remark, and hearing impairments
+        print('[Subject {:02d}] Remark=\'{}\''.format(subject.index, subject.remark))
 
-        self.fig.savefig("{}/Rec_data_subject_{:02d}.pdf".format(figures_save_folder, subject.index))
+        plt.draw()  # or does not update graphically...
+        self.fig.savefig("{}/Subjects/Rec_data_subject_{:02d}.pdf".format(figures_save_folder, subject.index))
+
+
+def display_perfs_box_plot(expe):
+
+    all_R = expe.get_all_R()
+
+    fig, ax = plt.subplots(1, 1)
+    ax.set(title="Performances of all subjects, per synth", xlabel="Synth ID", ylabel="Performance results R")
+
+    assert expe.global_params.search_types_count == 2, 'This display allows fader/interp search types only'
+
+    # box plot of all R data, with empty space after each synth
+    synths_range = range(expe.global_params.synths_trial_count*2, expe.global_params.synths_count * 2)
+    cur_x_tick = 0
+    x_ticks = []
+    x_ticks_labels = []
+    for i in synths_range:
+        if (cur_x_tick % 3 == 0):  # space
+            ax.axvline(x=cur_x_tick, ymin=0.0, ymax=1.0, color='black')
+            x_ticks.append(cur_x_tick)
+            x_ticks_labels.append('|')
+            cur_x_tick += 1
+
+        # actual boxplot at every iteration
+        synth_index = int(math.floor(float(i)/2.0))
+        synth_id = synth_index-expe.global_params.synths_trial_count
+        bp = ax.boxplot(all_R[synth_index][i%2], positions=[cur_x_tick])
+        if (i%2) == 0:
+            box_color = 'C0'
+            x_ticks_labels.append('F{}'.format(synth_id))
+        else:  # separating line after each synth
+            box_color = 'C1'
+            x_ticks_labels.append('I{}'.format(synth_id))
+        plt.setp(bp['boxes'], color=box_color)
+        plt.setp(bp['whiskers'], color=box_color)
+        plt.setp(bp['fliers'], color=box_color)
+
+        x_ticks.append(cur_x_tick)
+        cur_x_tick += 1
+
+    ax.set_ylim([0, 1])
+    ax.set_xlim([0, cur_x_tick])
+    ax.xaxis.set(ticks=x_ticks, ticklabels=x_ticks_labels)
+    for tick in ax.xaxis.get_major_ticks():
+        tick.label.set_fontsize(8)
+
+    fig.tight_layout()
+    plt.savefig("{}/Perf_all_box_plot.pdf".format(figures_save_folder))

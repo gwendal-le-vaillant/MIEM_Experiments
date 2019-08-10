@@ -6,6 +6,7 @@ import xml.etree.ElementTree as xet
 from distutils.util import strtobool
 from enum import IntEnum
 
+import statistics
 import numpy as np
 
 
@@ -96,6 +97,7 @@ class Experiment:
         self.global_params = GlobalParameters(config_etree.getroot(), params_count, allowed_time)
         all_subjects_count = int(config_etree.getroot().find("count").text)
 
+        # Getting all synth info
         synths_et = config_etree.getroot().find("synths")
         self.synths = list()
         for child in synths_et:
@@ -126,6 +128,17 @@ class Experiment:
     def get_subject_info_filename(self, subject_index):
         return "{}Exp{:04d}_info.xml".format(self.path_to_data, subject_index)
 
+    def get_all_R(self):
+        """ Returns a 3D list containing perf results of all subjects, indexed by synth idx and search type """
+        all_R = [ [ [] for j2 in range(self.global_params.search_types_count)]
+                       for j in range(self.global_params.synths_count) ]
+        for j in range(self.global_params.synths_count):
+            for j2 in range(self.global_params.search_types_count):
+                for subject in self.subjects:
+                    if subject.R[j, j2] >= 0.0: # only valid recorded performances are considered
+                        all_R[j][j2] += [ subject.R[j, j2] ]
+        return all_R
+
 
 class GlobalParameters:
     """
@@ -139,7 +152,9 @@ class GlobalParameters:
         self.synths_count = int(synths_et.attrib["total_count"])
         self.synths_trial_count = int(synths_et.attrib["trials_count"])
 
-        self.cycles_count = (2 * self.synths_non_trial_count) + self.synths_trial_count
+        self.search_types_count = 2
+        """ Currently, 2 values available: fader (0) or interpolation (1) """
+        self.cycles_count = (self.search_types_count * self.synths_non_trial_count) + self.synths_trial_count
         """ int: The number of cycles (called presets in the C++ code) that each subject should have performed
         within a full experiment.
         Contrainte : 1 essai pour chaque synthé de test, puis 2 essais pour chaque synthé réel
@@ -156,6 +171,9 @@ class GlobalParameters:
     @ property
     def synth_id_offset(self):
         return 0 + self.synths_trial_count
+
+    def get_synths_ids(self):
+        return range(-self.synths_trial_count, self.synths_non_trial_count)
 
 
 class Synth:
@@ -315,24 +333,33 @@ class Subject:
                         self.data[j][j2][k] *= normalization_matrix
 
         # - - - - - - - - Processing of loaded data : ??????? steps - - - - - - - -
-        # pre-allocation of E, T and P lists - will be 1,5 D lists (synth, interp)
-        self.E = np.full((self.synths_count, 2), -1.0)
-        self.T = np.full((self.synths_count, 2), -global_params.allowed_time)
-        self.P = np.full((self.synths_count, 2), -1.0)
+        # -> Step 1: performance measured at the end of each cycle. Sum of all abs errors, normalized
+        # pre-allocation of E, T and R lists - will be 1,5 D lists (synth, interp)
+        # (R = performance Result)
+        self.E = np.full((self.synths_count, self.search_types_count), -1.0)
+        self.T = np.full((self.synths_count, self.search_types_count), -global_params.allowed_time)
+        self.R = np.full((self.synths_count, self.search_types_count), -1.0)
         for j in range(0, len(self.data)):
             for j2 in range(0, len(self.data[j])):
                 if self.is_cycle_valid[j, j2]:
-                    # Step 1 : performance measured at the end of each cycle. Sum of all abs errors, normalized
-                    # NUMPY : pas un moyen + simple d'aller chercher la fin d'un array ?
                     self.T[j, j2] = self.data[j][j2][0][-1, 0]  # last recorded time of 1st param
                     self.E[j, j2] = sum( [ abs(param[-1, 1]) for param in self.data[j][j2] ] )\
                                     / global_params.params_count
-                    self.P[j, j2] = score_expe4(self.E[j, j2], self.T[j, j2], global_params.allowed_time)
+                    self.R[j, j2] = score_expe4(self.E[j, j2], self.T[j, j2], global_params.allowed_time)
+        # -> Step 2: Mean performance for this subject over all synth sounds, for fader and for interpolation
+        self.mean_R = [-1.0 for j2 in range(self.search_types_count)]
+        for j2 in range(self.search_types_count):
+            self.mean_R[j2] = statistics.mean( [R for R in self.R[:, j2] if (R >= 0.0)] )
+        pass
 
 
     @ property
     def synths_count(self):
         return self.global_params.synths_count
+
+    @ property
+    def search_types_count(self):
+        return self.global_params.search_types_count
 
     @ property
     def cycles_count(self):
