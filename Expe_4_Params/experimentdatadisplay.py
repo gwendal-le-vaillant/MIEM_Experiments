@@ -1,18 +1,50 @@
 
+import os
+import gc  # forced garbage collection of old plots
 import math
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RadioButtons
 import numpy as np
+import seaborn as sns
 
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm  # Color Maps
 
 import experimentdataprocessing as edp
 
-figures_save_folder = "./Figures"
+
+figures_folder = "./Figures"
+subjects_subfolder = "Subjects"
+perfs_subfolder = "Perfs"
 
 
-def display_age_and_sex(expe):
+def try_create_figures_folder():
+    if not os.path.exists(figures_folder):
+        os.mkdir(figures_folder)
+
+
+def save_in_figures_folder(fig, filename):
+    try_create_figures_folder()
+    fig.savefig("{}/{}".format(figures_folder, filename))
+
+
+def save_in_subjects_folder(fig, filename):
+    try_create_figures_folder()
+    subjects_folder = "{}/{}".format(figures_folder, subjects_subfolder)
+    if not os.path.exists(subjects_folder):
+        os.mkdir(subjects_folder)
+    fig.savefig("{}/{}".format(subjects_folder, filename))
+
+
+def save_in_perfs_folder(fig, filename):
+    try_create_figures_folder()
+    perfs_folder = "{}/{}".format(figures_folder, perfs_subfolder)
+    if not os.path.exists(perfs_folder):
+        os.mkdir(perfs_folder)
+    fig.savefig("{}/{}".format(perfs_folder, filename))
+
+
+def plot_age_and_sex(expe):
     female_ages = [subject.age for subject in expe.subjects if subject.sex == edp.SexType.FEMALE]
     male_ages = [subject.age for subject in expe.subjects if subject.sex == edp.SexType.MALE]
     other_ages = [subject.age for subject in expe.subjects if subject.sex == edp.SexType.NON_BINARY]
@@ -27,11 +59,11 @@ def display_age_and_sex(expe):
     plt.grid(linestyle="--", alpha=0.5)
     fig.tight_layout()
 
-    # save before show (because show seems to empty the figure)
-    plt.savefig("{}/Age_and_sex.pdf".format(figures_save_folder))
+    # save before show (because show empties the figure's internal data....)
+    save_in_figures_folder(fig, "Age_and_sex.pdf")
 
 
-def display_performance_score_surface(params_count=4, allowed_time=35.0):
+def plot_perf_eval_function(params_count=4, allowed_time=35.0):
 
     mesh_resolution = 51
     max_displayed_e = 0.79  # e is the total error
@@ -52,11 +84,12 @@ def display_performance_score_surface(params_count=4, allowed_time=35.0):
     ax.set_zlim(0.0, 1.0)
     ax.elev = 20.0
     ax.azim = 30.0
-    ax.set(title='In-game performance evaluation function', xlabel=r'Normalized total error $E$', ylabel='Research duration $T$ [s]', zlabel=r'Performance $P$')
+    ax.set(title='In-game performance evaluation function', xlabel=r'Normalized total error $e$',
+           ylabel='Research duration $d$ [s]', zlabel=r'Performance $s$')
     fig.colorbar(surf, aspect=18)
     plt.tight_layout()
 
-    plt.savefig("{}/Perf_eval_function.pdf".format(figures_save_folder))
+    save_in_figures_folder(fig, "Perf_eval_function.pdf")
 
 
 class SubjectPerformancesVisualizer:
@@ -68,7 +101,8 @@ class SubjectPerformancesVisualizer:
         self.fig.subplots_adjust(bottom=0.15)
 
         # radio buttons for going through all subjects
-        radio_selector_x = 0.75 if show_radio_selector else 1.5
+        self.show_radio_selector = show_radio_selector
+        radio_selector_x = 0.75 if show_radio_selector else 1.0
         self.fig.subplots_adjust(right=radio_selector_x-0.05)
         self.widget_ax = plt.axes([radio_selector_x, 0.1, 0.6, 0.8], frameon=True)  # ,aspect='equal')
         self.radio_buttons = RadioButtons(self.widget_ax, tuple([str(i) for i in range(len(self.expe.subjects))]))
@@ -77,38 +111,44 @@ class SubjectPerformancesVisualizer:
         self.radio_buttons.on_clicked(self.on_radio_button_changed)
         self.radio_buttons.set_active(default_subject_index)
 
+    def close(self):
+        self.fig.clear()
+        plt.close(self.fig)
+
     def on_radio_button_changed(self, label):
         subject_index = int(label)
         subject = self.expe.subjects[subject_index]
         self.update_plot(subject)
 
     def update_plot(self, subject):
-        plt.suptitle("Durations T, errors E and performances R for subject $i={}$".format(subject.index))
+        plt.suptitle("Durations $d_{ij}$, errors $e_{ij}$ and performances $s_{ij}$ for subject $i={}$"
+                     + str(subject.index))
 
         synths_ids = self.expe.global_params.get_synths_ids()
 
         self.axes[0].clear()
-        self.axes[0].set(ylabel="Error $E$")
-        self.axes[0].scatter(synths_ids, subject.E[:, 0], marker='s')
-        self.axes[0].scatter(synths_ids, subject.E[:, 1], marker='D')
+        self.axes[0].set(ylabel="Error $e_{ij}$")
+        self.axes[0].scatter(synths_ids, subject.e[:, 0], marker='s')
+        self.axes[0].scatter(synths_ids, subject.e[:, 1], marker='D')
         self.axes[0].set_ylim([0, 1])  # hides the -1 unvalid values
         self.axes[0].legend(['Faders', 'Interp'], loc="best")
 
         self.axes[1].clear()
-        self.axes[1].set(ylabel="Research duration $T$")
-        self.axes[1].scatter(synths_ids, subject.T[:, 0], marker='s')
-        self.axes[1].scatter(synths_ids, subject.T[:, 1], marker='D')
+        self.axes[1].set(ylabel="Research duration $d_{ij}$")
+        self.axes[1].scatter(synths_ids, subject.d[:, 0], marker='s')
+        self.axes[1].scatter(synths_ids, subject.d[:, 1], marker='D')
         self.axes[1].set_ylim([0, subject.global_params.allowed_time])  # hides the -1 unvalid values
 
         self.axes[2].clear()
-        self.axes[2].set(ylabel="Performance $R$", xlabel="Synth ID")
-        self.axes[2].scatter(synths_ids, subject.R[:, 0], marker='s')
-        self.axes[2].scatter(synths_ids, subject.R[:, 1], marker='D')
+        self.axes[2].set(ylabel="Performance $s_{ij}$", xlabel="Synth ID $j$")
+        self.axes[2].scatter(synths_ids, subject.s[:, 0], marker='s')
+        self.axes[2].scatter(synths_ids, subject.s[:, 1], marker='D')
         self.axes[2].set_ylim([0, 1])  # hides the -1 unvalid values
         self.axes[2].set_xlim([min(synths_ids)-0.5, max(synths_ids)+0.5])
         self.axes[2].xaxis.set_ticks(synths_ids)
 
-        plt.savefig("{}/Subjects/Perf_subject_{:02d}.pdf".format(figures_save_folder, subject.index))
+        if not self.show_radio_selector:
+            save_in_subjects_folder(self.fig, "Perf_subject_{:02d}.pdf".format(subject.index))
 
 
 class SubjectCurvesVisualizer:
@@ -129,7 +169,8 @@ class SubjectCurvesVisualizer:
         self.fig.subplots_adjust(bottom=0.1, left=0.1)
 
         # radio buttons for going through all subjects
-        radio_selector_x = 0.9 if show_radio_selector else 1.5
+        self.show_radio_selector = show_radio_selector
+        radio_selector_x = 0.85 if show_radio_selector else 1.0
         self.fig.subplots_adjust(right=radio_selector_x - 0.05)
         self.widget_ax = plt.axes([radio_selector_x, 0.1, 0.3, 0.8], frameon=True)  # ,aspect='equal')
         self.radio_buttons = RadioButtons(self.widget_ax, tuple([str(i) for i in range(len(self.expe.subjects))]))
@@ -137,6 +178,10 @@ class SubjectCurvesVisualizer:
             self.fig.text(0.93, 0.93, 'Subject:', ha='center', fontsize='10')
         self.radio_buttons.on_clicked(self.on_radio_button_changed)
         self.radio_buttons.set_active(default_subject_index)
+
+    def close(self):
+        self.fig.clear()
+        plt.close(self.fig)
 
     def on_radio_button_changed(self, label):
         subject_index = int(label)
@@ -165,7 +210,7 @@ class SubjectCurvesVisualizer:
 
                 for k in range(subject.params_count):
                     self.axes[row, col].plot(subject.data[synth_index][search_type][k][:, 0],
-                                        subject.data[synth_index][search_type][k][:, 1])
+                                             subject.data[synth_index][search_type][k][:, 1])
             else:
                 self.axes[row, col].set_title('Unvalid data.', size=10)
 
@@ -190,26 +235,44 @@ class SubjectCurvesVisualizer:
         print('[Subject {:02d}] Remark=\'{}\''.format(subject.index, subject.remark))
 
         plt.draw()  # or does not update graphically...
-        self.fig.savefig("{}/Subjects/Rec_data_subject_{:02d}.pdf".format(figures_save_folder, subject.index))
+        if not self.show_radio_selector:
+            save_in_subjects_folder(self.fig, "Rec_data_subject_{:02d}.pdf".format(subject.index))
 
 
-def display_perfs_box_plot(expe):
+def save_all_subjects_to_pdf(expe):
+    for subject in expe.subjects:
+        curves_visualizer = SubjectCurvesVisualizer(expe, subject.index, show_radio_selector=False)
+        perfs_visualizer = SubjectPerformancesVisualizer(expe, subject.index, show_radio_selector=False)
+        curves_visualizer.close()
+        perfs_visualizer.close()
+        del curves_visualizer
+        del perfs_visualizer
+        gc.collect()
 
-    all_R = expe.get_all_R()
 
-    fig, ax = plt.subplots(1, 1)
-    ax.set(title="Performances of all subjects, per synth", xlabel="Synth ID", ylabel="Performance results R")
+def plot_all_perfs(expe, plottype='box'):
 
     assert expe.global_params.search_types_count == 2, 'This display allows fader/interp search types only'
+    if plottype != 'box' and plottype != 'violin':
+        raise ValueError('Only \'violin\' plot and \'box\' plot are available')
+
+    all_s = expe.get_all_perfs()
+
+    fig = plt.figure(figsize=(9, 4))
+    ax = fig.add_subplot(111)
+    ax.set(title="Performances $s_{ij}$ of all subjects $i$, per synth $j$",
+           xlabel="Synth ID $j$", ylabel="Performances $s_{ij}$")
 
     # box plot of all R data, with empty space after each synth
     synths_range = range(expe.global_params.synths_trial_count*2, expe.global_params.synths_count * 2)
     cur_x_tick = 0
     x_ticks = []
     x_ticks_labels = []
+    bps = []  # for box plots
+    vls = []  # for violin plots
     for i in synths_range:
         if (cur_x_tick % 3 == 0):  # space
-            ax.axvline(x=cur_x_tick, ymin=0.0, ymax=1.0, color='black')
+            ax.axvline(x=cur_x_tick, ymin=0.0, ymax=1.0, color='black', linewidth=0.5)
             x_ticks.append(cur_x_tick)
             x_ticks_labels.append('|')
             cur_x_tick += 1
@@ -217,19 +280,35 @@ def display_perfs_box_plot(expe):
         # actual boxplot at every iteration
         synth_index = int(math.floor(float(i)/2.0))
         synth_id = synth_index-expe.global_params.synths_trial_count
-        bp = ax.boxplot(all_R[synth_index][i%2], positions=[cur_x_tick])
         if (i%2) == 0:
             box_color = 'C0'
             x_ticks_labels.append('F{}'.format(synth_id))
         else:  # separating line after each synth
             box_color = 'C1'
             x_ticks_labels.append('I{}'.format(synth_id))
-        plt.setp(bp['boxes'], color=box_color)
-        plt.setp(bp['whiskers'], color=box_color)
-        plt.setp(bp['fliers'], color=box_color)
+
+        if plottype == 'box':
+            # artist costomization from https://matplotlib.org/3.1.0/gallery/statistics/boxplot.html
+            median_props = dict(linestyle='-', linewidth=2.0, color='r')
+            mean_point_props = dict(marker='D', markeredgecolor='black', markerfacecolor='r', markersize=4)
+            bps.append(ax.boxplot(all_s[synth_index][i%2], positions=[cur_x_tick], sym='{}.'.format(box_color),
+                                widths=[0.6], showmeans=True, medianprops=median_props, meanprops=mean_point_props))
+            plt.setp(bps[-1]['boxes'], color=box_color)
+            plt.setp(bps[-1]['whiskers'], color=box_color)
+            plt.setp(bps[-1]['fliers'], color=box_color)
+
+        elif plottype == 'violin':
+            vls.append(ax.violinplot(all_s[synth_index][i%2], positions=[cur_x_tick]))
 
         x_ticks.append(cur_x_tick)
         cur_x_tick += 1
+
+    if plottype == 'box':
+        ax.legend([bps[0]['boxes'][0], bps[1]['boxes'][0], bps[0]['medians'][0], bps[0]['means'][0]],
+                  ['Faders method', 'Interp method', 'medians', 'means $\\overline{s_j}$'],
+                  loc='center left', bbox_to_anchor=(1.0, 0.5))
+    elif plottype == 'violin':
+        pass  # not enough at the moment to really use a violin plot...
 
     ax.set_ylim([0, 1])
     ax.set_xlim([0, cur_x_tick])
@@ -238,4 +317,105 @@ def display_perfs_box_plot(expe):
         tick.label.set_fontsize(8)
 
     fig.tight_layout()
-    plt.savefig("{}/Perf_all_box_plot.pdf".format(figures_save_folder))
+    save_in_figures_folder(fig, "Perf_all_{}_plot.pdf".format(plottype))
+
+
+def plot_perf_and_expertise(expe):
+    assert len(expe.subjects[0].mean_s) == 2, 'Works for 2 methods only (fader + interp)'
+
+    # Degrees of polynomial regressions
+    faders_reg_degree = 2  # best is 2
+    interp_reg_degree = 1  # best is 1
+
+    expertise_levels = np.asarray([subject.expertise_level for subject in expe.subjects], dtype=int)
+    # vstack of row arrays
+    mean_s = np.vstack( (np.asarray([subject.mean_s[0] for subject in expe.subjects]),
+                         np.asarray([subject.mean_s[1] for subject in expe.subjects])) )
+
+    # manual polyfits, because seaborn does not (and will not...) give numerical outputs (only graphs, visualization)
+    reg0 = np.polyfit(expertise_levels, mean_s[0, :], faders_reg_degree)
+    reg1 = np.polyfit(expertise_levels, mean_s[1, :], interp_reg_degree)
+    reg_p = [np.poly1d(reg0), np.poly1d(reg1)]
+    for i in range(2):
+        analyse_goodness_of_fit(expertise_levels, mean_s[i, :], reg_p[i], ('Faders' if i == 0 else 'Interp'))
+
+    # Seaborn fit graph (underlying functions: np.polyfit)
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    ax.set(title="Performances $\\overline{s_i}$ of subjects $i$, related to their expertise",
+           xlabel="Estimated expertise level", ylabel="Mean performance $\\overline{s_i}$")
+
+    regplot0 = sns.regplot(x=expertise_levels, y=mean_s[0, :], order=faders_reg_degree,
+                           label="Faders method", marker='s')
+    regplot1 = sns.regplot(x=expertise_levels, y=mean_s[1, :], order=interp_reg_degree,
+                           label="Interp method", marker='D')
+
+    ax.set_ylim([0, 1])
+    ax.set_xlim([min(expertise_levels)-0.5, max(expertise_levels)+0.5])
+
+    ax.legend(loc='best')
+
+    fig.tight_layout()
+    save_in_figures_folder(fig, "Perf_and_expertise.pdf")
+
+
+def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
+    """
+    Computation of SSE, R-square, adjusted R-square and RMSE, and display of residuals histogram
+    (which should be close to a normal distribution)
+    gof statistics: https://fr.mathworks.com/help/curvefit/evaluating-goodness-of-fit.html
+    """
+
+    # useful display and computational data
+    y_fitted = poly_fit(x_data)
+    min_x_display = min(x_data) - abs(max(x_data) - min(x_data)) * 0.1
+    max_x_display = max(x_data) + abs(max(x_data) - min(x_data)) * 0.1
+    x_fitted_display = np.linspace(min_x_display, max_x_display)
+    y_fitted_display = poly_fit(x_fitted_display)
+
+    # goodness of fit indicators
+    dof = len(y_data) - (poly_fit.order+1)  # degrees of freedom
+    SSE = np.sum((y_data - y_fitted) ** 2)  # Sum of Squared Errors
+    SST = np.sum((y_data - np.mean(y_data)) ** 2)  # Total Sum of Squares (about the mean)
+    R2 = 1.0 - SSE/SST  # R squared
+    RMSE = math.sqrt( SSE / dof )  # Root Mean Squared Error
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 2, 1)
+
+    # plot of the fitted polynomial itself
+    ax.plot(x_fitted_display, y_fitted_display, color='C6')
+    ax.scatter(x_data, y_data, color='C7')
+    ax.set(title="Fitted polynomial ({}) for \'{}\'".format(poly_fit.order, fit_name), xlabel="x", ylabel="y")
+
+    # histogram of residuals
+    ax2 = fig.add_subplot(1, 2, 2)
+    sns.distplot(y_data - y_fitted, kde=True, ax=ax2)
+    ax2.set(title="Histogram of residuals", xlabel="Residual value $y_k - \\widehat{y_k}$", ylabel="Count")
+
+    # display of fit indicators
+    fig.text(0.02, 0.02, '$SSE = {0:.6f}$'.format(SSE), fontsize='10')
+    fig.text(0.27, 0.02, '$R^2 = {0:.6f}$'.format(R2), fontsize='10')
+    fig.text(0.52, 0.02, '$RMSE = {0:.6f}$'.format(RMSE), fontsize='10')
+
+    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.2)
+
+    save_in_perfs_folder(fig, "Polyfit_{}_order_{}.pdf".format(fit_name, poly_fit.order))
+
+
+def plot_opinions_on_methods(expe):
+
+    #fig = plt.figure()
+
+    # We will rely on a pandas dataframe for this
+    ax = expe.opinions.plot.bar(rot=0)
+    ax.set(title='Answers to the questions: which method was the [...] ?',
+           ylabel='Amount of subjects', xlabel='Characteristic asked')
+    # legend needs more space
+    max_displayed_y = int(math.floor( expe.opinions.max().max() * 1.4 ))
+
+    ax.legend(loc='best')
+    ax.set_ylim([0, max_displayed_y])
+
+    save_in_figures_folder(plt.gcf(), "Opinions_on_methods.pdf")

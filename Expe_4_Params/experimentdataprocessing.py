@@ -8,6 +8,7 @@ from enum import IntEnum
 
 import statistics
 import numpy as np
+import pandas as pd
 
 
 class MethodType(IntEnum):
@@ -114,6 +115,33 @@ class Experiment:
         for i in range(len(self.subjects)):
             self.subjects[i].set_index(i)
 
+        # Construction of a dataframe for opinions
+        self.opinions_per_synth = pd.DataFrame({'fastest': [subject.methods_opinion.fastest
+                                                              for subject in self.subjects],
+                                                  'most precise': [subject.methods_opinion.most_precise
+                                                                   for subject in self.subjects],
+                                                  'most intuitive': [subject.methods_opinion.most_intuitive
+                                                                     for subject in self.subjects],
+                                                  'preferred': [subject.methods_opinion.preferred
+                                                                for subject in self.subjects]})
+        # dataframe to be displayed directly in a bar plot - index will be the absissa
+        faders_counts = [len([0 for subject in self.subjects if subject.methods_opinion.fastest == MethodType.FADER]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.most_precise == MethodType.FADER]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.most_intuitive == MethodType.FADER]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.preferred == MethodType.FADER])]
+        interp_counts = [len([0 for subject in self.subjects if subject.methods_opinion.fastest == MethodType.INTERP]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.most_precise == MethodType.INTERP]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.most_intuitive == MethodType.INTERP]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.preferred == MethodType.INTERP])]
+        none_counts = [len([0 for subject in self.subjects if subject.methods_opinion.fastest == MethodType.NONE]),
+                       len([0 for subject in self.subjects if subject.methods_opinion.most_precise == MethodType.NONE]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.most_intuitive == MethodType.NONE]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.preferred == MethodType.NONE])]
+        self.opinions = pd.DataFrame({'Faders': faders_counts,
+                                      'Interpolation': interp_counts,
+                                      'None': none_counts},
+                                     index=['fastest', 'most precise', 'most intuitive', 'preferred'])
+
         # display at the very end of loading (some data might be considered unvalid)
         print("...Data loading finished.")
         print("--------------------------------")
@@ -128,16 +156,16 @@ class Experiment:
     def get_subject_info_filename(self, subject_index):
         return "{}Exp{:04d}_info.xml".format(self.path_to_data, subject_index)
 
-    def get_all_R(self):
+    def get_all_perfs(self):
         """ Returns a 3D list containing perf results of all subjects, indexed by synth idx and search type """
-        all_R = [ [ [] for j2 in range(self.global_params.search_types_count)]
+        all_s = [ [ [] for j2 in range(self.global_params.search_types_count)]
                        for j in range(self.global_params.synths_count) ]
         for j in range(self.global_params.synths_count):
             for j2 in range(self.global_params.search_types_count):
                 for subject in self.subjects:
-                    if subject.R[j, j2] >= 0.0: # only valid recorded performances are considered
-                        all_R[j][j2] += [ subject.R[j, j2] ]
-        return all_R
+                    if subject.s[j, j2] >= 0.0: # only valid recorded performances are considered
+                        all_s[j][j2] += [subject.s[j, j2]]
+        return all_s
 
 
 class GlobalParameters:
@@ -334,22 +362,22 @@ class Subject:
 
         # - - - - - - - - Processing of loaded data : ??????? steps - - - - - - - -
         # -> Step 1: performance measured at the end of each cycle. Sum of all abs errors, normalized
-        # pre-allocation of E, T and R lists - will be 1,5 D lists (synth, interp)
-        # (R = performance Result)
-        self.E = np.full((self.synths_count, self.search_types_count), -1.0)
-        self.T = np.full((self.synths_count, self.search_types_count), -global_params.allowed_time)
-        self.R = np.full((self.synths_count, self.search_types_count), -1.0)
+        # pre-allocation of e, d, and s lists - will be 1,5 D lists (synth, interp)
+        # (e = error samples, d = duration samples, s = perf score samples)
+        self.e = np.full((self.synths_count, self.search_types_count), -1.0)
+        self.d = np.full((self.synths_count, self.search_types_count), -global_params.allowed_time)
+        self.s = np.full((self.synths_count, self.search_types_count), -1.0)
         for j in range(0, len(self.data)):
             for j2 in range(0, len(self.data[j])):
                 if self.is_cycle_valid[j, j2]:
-                    self.T[j, j2] = self.data[j][j2][0][-1, 0]  # last recorded time of 1st param
-                    self.E[j, j2] = sum( [ abs(param[-1, 1]) for param in self.data[j][j2] ] )\
+                    self.d[j, j2] = self.data[j][j2][0][-1, 0]  # last recorded time of 1st param
+                    self.e[j, j2] = sum([abs(param[-1, 1]) for param in self.data[j][j2]]) \
                                     / global_params.params_count
-                    self.R[j, j2] = score_expe4(self.E[j, j2], self.T[j, j2], global_params.allowed_time)
+                    self.s[j, j2] = score_expe4(self.e[j, j2], self.d[j, j2], global_params.allowed_time)
         # -> Step 2: Mean performance for this subject over all synth sounds, for fader and for interpolation
-        self.mean_R = [-1.0 for j2 in range(self.search_types_count)]
+        self.mean_s = [-1.0 for j2 in range(self.search_types_count)]
         for j2 in range(self.search_types_count):
-            self.mean_R[j2] = statistics.mean( [R for R in self.R[:, j2] if (R >= 0.0)] )
+            self.mean_s[j2] = statistics.mean([s for s in self.s[:, j2] if (s >= 0.0)])
         pass
 
 
@@ -397,4 +425,3 @@ class MethodsOpinion:
                 return MethodType.FADER
             else:
                 return MethodType.NONE
-
