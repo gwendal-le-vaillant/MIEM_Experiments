@@ -1,5 +1,5 @@
 
-import os
+
 import gc  # forced garbage collection of old plots
 import math
 import matplotlib.pyplot as plt
@@ -7,41 +7,11 @@ from matplotlib.widgets import RadioButtons
 import numpy as np
 import seaborn as sns
 
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm  # Color Maps
-
 import experimentdataprocessing as edp
+import figurefiles
+import perfeval
 
 
-figures_folder = "./Figures"
-subjects_subfolder = "Subjects"
-perfs_subfolder = "Perfs"
-
-
-def try_create_figures_folder():
-    if not os.path.exists(figures_folder):
-        os.mkdir(figures_folder)
-
-
-def save_in_figures_folder(fig, filename):
-    try_create_figures_folder()
-    fig.savefig("{}/{}".format(figures_folder, filename))
-
-
-def save_in_subjects_folder(fig, filename):
-    try_create_figures_folder()
-    subjects_folder = "{}/{}".format(figures_folder, subjects_subfolder)
-    if not os.path.exists(subjects_folder):
-        os.mkdir(subjects_folder)
-    fig.savefig("{}/{}".format(subjects_folder, filename))
-
-
-def save_in_perfs_folder(fig, filename):
-    try_create_figures_folder()
-    perfs_folder = "{}/{}".format(figures_folder, perfs_subfolder)
-    if not os.path.exists(perfs_folder):
-        os.mkdir(perfs_folder)
-    fig.savefig("{}/{}".format(perfs_folder, filename))
 
 
 def plot_age_and_sex(expe):
@@ -60,36 +30,7 @@ def plot_age_and_sex(expe):
     fig.tight_layout()
 
     # save before show (because show empties the figure's internal data....)
-    save_in_figures_folder(fig, "Age_and_sex.pdf")
-
-
-def plot_perf_eval_function(params_count=4, allowed_time=35.0):
-
-    mesh_resolution = 51
-    max_displayed_e = 0.79  # e is the total error
-    e_values = np.linspace(0.0, max_displayed_e, mesh_resolution)
-    t_values = np.linspace(0.0, allowed_time, mesh_resolution)  # t is the research total duration
-    e_grid, t_grid = np.meshgrid(e_values, t_values)
-
-    # CODE EXEMPLE : source = https://hub.packtpub.com/creating-2d-3d-plots-using-matplotlib/
-    p_values = edp.score_expe4(e_grid, t_grid, allowed_time)
-
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1, projection='3d')
-    surf = ax.plot_surface(e_grid, t_grid, p_values,
-                           #rstride=1, cstride=1,
-                           linewidth=0, cmap=cm.plasma)
-    ax.set_xlim(0.0, max_displayed_e)
-    ax.set_ylim(0.0, allowed_time)
-    ax.set_zlim(0.0, 1.0)
-    ax.elev = 20.0
-    ax.azim = 30.0
-    ax.set(title='In-game performance evaluation function', xlabel=r'Normalized total error $e$',
-           ylabel='Research duration $d$ [s]', zlabel=r'Performance $s$')
-    fig.colorbar(surf, aspect=18)
-    plt.tight_layout()
-
-    save_in_figures_folder(fig, "Perf_eval_function.pdf")
+    figurefiles.save_in_figures_folder(fig, "Age_and_sex.pdf")
 
 
 class SubjectPerformancesVisualizer:
@@ -127,28 +68,28 @@ class SubjectPerformancesVisualizer:
         synths_ids = self.expe.global_params.get_synths_ids()
 
         self.axes[0].clear()
-        self.axes[0].set(ylabel="Error $e_{ij}$")
-        self.axes[0].scatter(synths_ids, subject.e[:, 0], marker='s')
-        self.axes[0].scatter(synths_ids, subject.e[:, 1], marker='D')
-        self.axes[0].set_ylim([0, 1])  # hides the -1 unvalid values
-        self.axes[0].legend(['Faders', 'Interp'], loc="best")
+        self.axes[0].set(ylabel="Research duration $d_{ij}$")
+        self.axes[0].scatter(synths_ids, subject.d[:, 0], marker='s')
+        self.axes[0].scatter(synths_ids, subject.d[:, 1], marker='D')
+        self.axes[0].set_ylim([0, subject.global_params.allowed_time])  # hides the -1 unvalid values
 
         self.axes[1].clear()
-        self.axes[1].set(ylabel="Research duration $d_{ij}$")
-        self.axes[1].scatter(synths_ids, subject.d[:, 0], marker='s')
-        self.axes[1].scatter(synths_ids, subject.d[:, 1], marker='D')
-        self.axes[1].set_ylim([0, subject.global_params.allowed_time])  # hides the -1 unvalid values
+        self.axes[1].set(ylabel="Normalized norm-1 error $e_{ij}$")
+        self.axes[1].scatter(synths_ids, subject.e_norm1[:, 0], marker='s')
+        self.axes[1].scatter(synths_ids, subject.e_norm1[:, 1], marker='D')
+        self.axes[1].set_ylim([0, 1])  # hides the -1 unvalid values
+        self.axes[1].legend(['Faders', 'Interp'], loc="best")
 
         self.axes[2].clear()
         self.axes[2].set(ylabel="Performance $s_{ij}$", xlabel="Synth ID $j$")
-        self.axes[2].scatter(synths_ids, subject.s[:, 0], marker='s')
-        self.axes[2].scatter(synths_ids, subject.s[:, 1], marker='D')
+        self.axes[2].scatter(synths_ids, subject.s_ingame[:, 0], marker='s')
+        self.axes[2].scatter(synths_ids, subject.s_ingame[:, 1], marker='D')
         self.axes[2].set_ylim([0, 1])  # hides the -1 unvalid values
         self.axes[2].set_xlim([min(synths_ids)-0.5, max(synths_ids)+0.5])
         self.axes[2].xaxis.set_ticks(synths_ids)
 
         if not self.show_radio_selector:
-            save_in_subjects_folder(self.fig, "Perf_subject_{:02d}.pdf".format(subject.index))
+            figurefiles.save_in_subjects_folder(self.fig, "Perf_subject_{:02d}.pdf".format(subject.index))
 
 
 class SubjectCurvesVisualizer:
@@ -236,7 +177,7 @@ class SubjectCurvesVisualizer:
 
         plt.draw()  # or does not update graphically...
         if not self.show_radio_selector:
-            save_in_subjects_folder(self.fig, "Rec_data_subject_{:02d}.pdf".format(subject.index))
+            figurefiles.save_in_subjects_folder(self.fig, "Rec_data_subject_{:02d}.pdf".format(subject.index))
 
 
 def save_all_subjects_to_pdf(expe):
@@ -256,7 +197,7 @@ def plot_all_perfs(expe, plottype='box'):
     if plottype != 'box' and plottype != 'violin':
         raise ValueError('Only \'violin\' plot and \'box\' plot are available')
 
-    all_s = expe.get_all_perfs()
+    all_s = expe.get_all_valid_perfs()
 
     fig = plt.figure(figsize=(9, 4))
     ax = fig.add_subplot(111)
@@ -317,11 +258,11 @@ def plot_all_perfs(expe, plottype='box'):
         tick.label.set_fontsize(8)
 
     fig.tight_layout()
-    save_in_figures_folder(fig, "Perf_all_{}_plot.pdf".format(plottype))
+    figurefiles.save_in_figures_folder(fig, "Perf_all_{}_plot.pdf".format(plottype))
 
 
 def plot_perf_and_expertise(expe):
-    assert len(expe.subjects[0].mean_s) == 2, 'Works for 2 methods only (fader + interp)'
+    assert len(expe.subjects[0].mean_s_ingame) == 2, 'Works for 2 methods only (fader + interp)'
 
     # Degrees of polynomial regressions
     faders_reg_degree = 2  # best is 2
@@ -329,8 +270,8 @@ def plot_perf_and_expertise(expe):
 
     expertise_levels = np.asarray([subject.expertise_level for subject in expe.subjects], dtype=int)
     # vstack of row arrays
-    mean_s = np.vstack( (np.asarray([subject.mean_s[0] for subject in expe.subjects]),
-                         np.asarray([subject.mean_s[1] for subject in expe.subjects])) )
+    mean_s = np.vstack( (np.asarray([subject.mean_s_ingame[0] for subject in expe.subjects]),
+                         np.asarray([subject.mean_s_ingame[1] for subject in expe.subjects])) )
 
     # manual polyfits, because seaborn does not (and will not...) give numerical outputs (only graphs, visualization)
     reg0 = np.polyfit(expertise_levels, mean_s[0, :], faders_reg_degree)
@@ -356,7 +297,7 @@ def plot_perf_and_expertise(expe):
     ax.legend(loc='best')
 
     fig.tight_layout()
-    save_in_figures_folder(fig, "Perf_and_expertise.pdf")
+    figurefiles.save_in_figures_folder(fig, "Perf_and_expertise.pdf")
 
 
 def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
@@ -401,14 +342,12 @@ def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
     fig.tight_layout()
     fig.subplots_adjust(bottom=0.2)
 
-    save_in_perfs_folder(fig, "Polyfit_{}_order_{}.pdf".format(fit_name, poly_fit.order))
+    figurefiles.save_in_perfs_folder(fig, "Polyfit_{}_order_{}.pdf".format(fit_name, poly_fit.order))
 
 
 def plot_opinions_on_methods(expe):
 
-    #fig = plt.figure()
-
-    # We will rely on a pandas dataframe for this
+    # We rely on a pre-computed pandas dataframe for this
     ax = expe.opinions.plot.bar(rot=0)
     ax.set(title='Answers to the questions: which method was the [...] ?',
            ylabel='Amount of subjects', xlabel='Characteristic asked')
@@ -418,4 +357,4 @@ def plot_opinions_on_methods(expe):
     ax.legend(loc='best')
     ax.set_ylim([0, max_displayed_y])
 
-    save_in_figures_folder(plt.gcf(), "Opinions_on_methods.pdf")
+    figurefiles.save_in_figures_folder(plt.gcf(), "Opinions_on_methods.pdf")

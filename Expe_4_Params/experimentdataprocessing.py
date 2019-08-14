@@ -11,28 +11,13 @@ import numpy as np
 import pandas as pd
 
 
+import perfeval
+
+
 class MethodType(IntEnum):
     NONE = -1
     FADER = 0   # independant control of independant parameters
     INTERP = 1  # interpolation between presets
-
-
-def score_expe4(e, t, allowed_time):
-    """ Score function implemented in the '4 parameters' MIEM experiment.
-    e is the norm-1 parametric error, t is the total research duration. """
-
-    # At first, we consider that the score is based on 2 independant performances: research time and final precision
-    precision_term = 1.0 - 2.0*e  # null or negative if norm-1 error > 0.5
-    time_term = 1.0 - t / (allowed_time*1.5)  # always positive, and is at least 1/3
-    independant_score = precision_term + 0.70 * time_term  # might be negative if precision is very bad
-    independant_score = np.clip(independant_score, 0.0, np.inf)
-
-    # Then, as the error is the most important, we multiply this temp result with a precision factor
-    precision_factor = 1.0 - 1.3 * e  # null or negative if error >= 0.77 (which is a huge error)
-    final_score = 0.65 * independant_score * precision_factor  # 0.65 normalization factor
-
-    final_score = np.clip(final_score, 0.0, 1.0);
-    return final_score
 
 
 def load_experiment_once_a_day(data_path, force_reload=False):
@@ -135,8 +120,8 @@ class Experiment:
                          len([0 for subject in self.subjects if subject.methods_opinion.preferred == MethodType.INTERP])]
         none_counts = [len([0 for subject in self.subjects if subject.methods_opinion.fastest == MethodType.NONE]),
                        len([0 for subject in self.subjects if subject.methods_opinion.most_precise == MethodType.NONE]),
-                         len([0 for subject in self.subjects if subject.methods_opinion.most_intuitive == MethodType.NONE]),
-                         len([0 for subject in self.subjects if subject.methods_opinion.preferred == MethodType.NONE])]
+                       len([0 for subject in self.subjects if subject.methods_opinion.most_intuitive == MethodType.NONE]),
+                       len([0 for subject in self.subjects if subject.methods_opinion.preferred == MethodType.NONE])]
         self.opinions = pd.DataFrame({'Faders': faders_counts,
                                       'Interpolation': interp_counts,
                                       'None': none_counts},
@@ -156,16 +141,24 @@ class Experiment:
     def get_subject_info_filename(self, subject_index):
         return "{}Exp{:04d}_info.xml".format(self.path_to_data, subject_index)
 
-    def get_all_perfs(self):
+    def get_all_valid_perfs(self):
         """ Returns a 3D list containing perf results of all subjects, indexed by synth idx and search type """
         all_s = [ [ [] for j2 in range(self.global_params.search_types_count)]
                        for j in range(self.global_params.synths_count) ]
         for j in range(self.global_params.synths_count):
             for j2 in range(self.global_params.search_types_count):
                 for subject in self.subjects:
-                    if subject.s[j, j2] >= 0.0: # only valid recorded performances are considered
-                        all_s[j][j2] += [subject.s[j, j2]]
+                    if subject.s_ingame[j, j2] >= 0.0: # only valid recorded performances are considered
+                        all_s[j][j2] += [subject.s_ingame[j, j2]]
         return all_s
+
+    @property
+    def all_actual_ingame_s_1d(self):
+        """ Returns a flattend 1D numpy array of all perfs. Does not include trial or unvalid perfs. """
+        flattened_s = []  # because it involves memory allocations: use of a python list...
+        for subject in self.subjects:
+            flattened_s.extend(subject.actual_s_ingame_1d)
+        return np.array(flattened_s)
 
 
 class GlobalParameters:
@@ -360,26 +353,46 @@ class Subject:
                         # -> this product is the default with numpy arrays (numpy matrices are not actually common...)
                         self.data[j][j2][k] *= normalization_matrix
 
-        # - - - - - - - - Processing of loaded data : ??????? steps - - - - - - - -
-        # -> Step 1: performance measured at the end of each cycle. Sum of all abs errors, normalized
+        # - - - - - - - - Processing of loaded data : 2 steps - - - - - - - -
+        # -> Step 1: performance measured at the end of each cycle. Errors are normalized.
         # pre-allocation of e, d, and s lists - will be 1,5 D lists (synth, interp)
         # (e = error samples, d = duration samples, s = perf score samples)
-        self.e = np.full((self.synths_count, self.search_types_count), -1.0)
+        self.e_norm1 = np.full((self.synths_count, self.search_types_count), -1.0)
+        self.e_norm2 = np.full((self.synths_count, self.search_types_count), -1.0)
         self.d = np.full((self.synths_count, self.search_types_count), -global_params.allowed_time)
-        self.s = np.full((self.synths_count, self.search_types_count), -1.0)
+        self.s_ingame = np.full((self.synths_count, self.search_types_count), -1.0)
         for j in range(0, len(self.data)):
             for j2 in range(0, len(self.data[j])):
                 if self.is_cycle_valid[j, j2]:
                     self.d[j, j2] = self.data[j][j2][0][-1, 0]  # last recorded time of 1st param
-                    self.e[j, j2] = sum([abs(param[-1, 1]) for param in self.data[j][j2]]) \
-                                    / global_params.params_count
-                    self.s[j, j2] = score_expe4(self.e[j, j2], self.d[j, j2], global_params.allowed_time)
+                    self.e_norm1[j, j2] = sum([abs(param_data[-1, 1]) for param_data in self.data[j][j2]]) \
+                                          / global_params.params_count
+                    self.e_norm2[j, j2] = sum( [param_data[-1, 1] ** 2 for param_data in self.data[j][j2]] )
+                    self.e_norm2[j, j2] = np.sqrt(self.e_norm2[j, j2]) / global_params.params_count
+                    self.s_ingame[j, j2] = perfeval.expe4_ingame_eval(self.e_norm1[j, j2], self.d[j, j2],
+                                                                      global_params.allowed_time)
+                    # other performance scores will be computed on-demand, after data loading
         # -> Step 2: Mean performance for this subject over all synth sounds, for fader and for interpolation
-        self.mean_s = [-1.0 for j2 in range(self.search_types_count)]
+        # (for quick early results, before a proper analysis)
+        self.mean_s_ingame = [-1.0 for j2 in range(self.search_types_count)]
         for j2 in range(self.search_types_count):
-            self.mean_s[j2] = statistics.mean([s for s in self.s[:, j2] if (s >= 0.0)])
-        pass
+            self.mean_s_ingame[j2] = statistics.mean([s for s in self.s_ingame[:, j2] if (s >= 0.0)])
 
+    @property
+    def actual_s_ingame_1d(self):
+        """ Flattened array of all perfs, unsorted, not included trial or unvalid data. """
+        s_ingame_notrial = self.s_ingame[self.global_params.synths_trial_count:, :]
+        s_ingame_notrial = s_ingame_notrial.flatten()
+        return s_ingame_notrial[s_ingame_notrial >= 0.0]
+
+    def get_adjusted_s(self):
+        s_adjusted = np.full((self.synths_count, self.search_types_count), -1.0)
+        for j in range(0, len(self.data)):
+            for j2 in range(0, len(self.data[j])):
+                if self.is_cycle_valid[j, j2]:
+                    s_adjusted[j, j2] = perfeval.adjusted_eval(self.e_norm2[j, j2], self.d[j, j2],
+                                                               self.global_params.allowed_time)
+        return s_adjusted
 
     @ property
     def synths_count(self):
@@ -410,7 +423,7 @@ class MethodsOpinion:
         Stores the final opinion on control methods from the XML node. See MethodType for the base enum type
         """
         def __init__(self, opinion_et):
-            # MIGHT BE OPTIMIZED USING PANDAS
+            # COULD BE OPTIMIZED USING PANDAS
             self.fastest = self._convert_string_to_type(opinion_et.attrib["fastest"])
             self.most_precise = self._convert_string_to_type(opinion_et.attrib["most_precise"])
             self.most_intuitive = self._convert_string_to_type(opinion_et.attrib["most_intuitive"])
