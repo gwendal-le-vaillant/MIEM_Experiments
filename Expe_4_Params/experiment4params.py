@@ -31,7 +31,8 @@ if (subject_index >= 0) and (subject_index < len(expe4.subjects)):
 # ----- 2 - Analysis of performance evaluation function, Display of global performance results -----
 perfs_analyzer = perfeval.Analyzer(expe4)
 perfs_analyzer.compare_ingame_to_adjusted()
-edd.plot_all_perfs(expe4)
+perfs_analyzer.compare_adjusted()
+#edd.plot_all_perfs(expe4)
 #edd.plot_perf_and_expertise(expe4)
 
 

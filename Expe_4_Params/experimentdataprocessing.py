@@ -160,6 +160,12 @@ class Experiment:
             flattened_s.extend(subject.actual_s_ingame_1d)
         return np.array(flattened_s)
 
+    def get_all_actual_adjusted_s_1d(self, adjustement_type=perfeval.get_best_type()):
+        flattened_s = []  # because it involves memory allocations: use of a python list...
+        for subject in self.subjects:
+            flattened_s.extend(subject.get_actual_s_adjusted_1d(adjustement_type))
+        return np.array(flattened_s)
+
 
 class GlobalParameters:
     """
@@ -380,19 +386,30 @@ class Subject:
 
     @property
     def actual_s_ingame_1d(self):
-        """ Flattened array of all perfs, unsorted, not included trial or unvalid data. """
-        s_ingame_notrial = self.s_ingame[self.global_params.synths_trial_count:, :]
-        s_ingame_notrial = s_ingame_notrial.flatten()
-        return s_ingame_notrial[s_ingame_notrial >= 0.0]
+        """ Flattened array of all in-game perfs, unsorted, not included trial or unvalid data. """
+        s_notrial = self.s_ingame[self.global_params.synths_trial_count:, :]
+        s_notrial = s_notrial.flatten()
+        return s_notrial[s_notrial >= 0.0]
 
-    def get_adjusted_s(self):
-        s_adjusted = np.full((self.synths_count, self.search_types_count), -1.0)
+    def get_s_adjusted(self, adjustement_type):
+        s_adj = np.full((self.synths_count, self.search_types_count), -1.0)
         for j in range(0, len(self.data)):
             for j2 in range(0, len(self.data[j])):
                 if self.is_cycle_valid[j, j2]:
-                    s_adjusted[j, j2] = perfeval.adjusted_eval(self.e_norm2[j, j2], self.d[j, j2],
-                                                               self.global_params.allowed_time)
-        return s_adjusted
+                    error_type = perfeval.get_error_type_for_adjustement(adjustement_type)
+                    if error_type == 1:
+                        error_adjusted = self.e_norm1[j, j2]
+                    elif error_type == 2:
+                        error_adjusted = self.e_norm2[j, j2]
+                    s_adj[j, j2] = perfeval.adjusted_eval(error_adjusted, self.d[j, j2],
+                                                          self.global_params.allowed_time, adjustement_type)
+        return s_adj
+
+    def get_actual_s_adjusted_1d(self, adjustement_type):
+        """ Flattened array of all adjusted perfs, unsorted, not included trial or unvalid data. """
+        s_notrial = self.get_s_adjusted(adjustement_type)[self.global_params.synths_trial_count:, :]
+        s_notrial = s_notrial.flatten()
+        return s_notrial[s_notrial >= 0.0]
 
     @ property
     def synths_count(self):
