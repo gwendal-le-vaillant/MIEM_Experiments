@@ -12,8 +12,6 @@ import figurefiles
 import perfeval
 
 
-
-
 def plot_age_and_sex(expe):
     female_ages = [subject.age for subject in expe.subjects if subject.sex == edp.SexType.FEMALE]
     male_ages = [subject.age for subject in expe.subjects if subject.sex == edp.SexType.MALE]
@@ -38,7 +36,7 @@ class SubjectPerformancesVisualizer:
     def __init__(self, expe, default_subject_index, show_radio_selector=True):
 
         self.expe = expe
-        self.fig, self.axes = plt.subplots(nrows=3, ncols=1, sharex=True, sharey=False, figsize=(7, 6))
+        self.fig, self.axes = plt.subplots(nrows=4, ncols=1, sharex=True, sharey=False, figsize=(7, 9))
         self.fig.subplots_adjust(bottom=0.15)
 
         # radio buttons for going through all subjects
@@ -74,20 +72,30 @@ class SubjectPerformancesVisualizer:
         self.axes[0].set_ylim([0, subject.global_params.allowed_time])  # hides the -1 unvalid values
 
         self.axes[1].clear()
-        self.axes[1].set(ylabel="Normalized norm-1 error $e_{ij}$")
+        self.axes[1].set(ylabel="Norm-1 error $e_{ij}$")
         self.axes[1].scatter(synths_ids, subject.e_norm1[:, 0], marker='s')
         self.axes[1].scatter(synths_ids, subject.e_norm1[:, 1], marker='D')
         self.axes[1].set_ylim([0, 1])  # hides the -1 unvalid values
         self.axes[1].legend(['Faders', 'Interp'], loc="best")
 
         self.axes[2].clear()
-        self.axes[2].set(ylabel="Performance $s_{ij}$", xlabel="Synth ID $j$")
+        self.axes[2].set(ylabel="In-game displayed perf.")
         self.axes[2].scatter(synths_ids, subject.s_ingame[:, 0], marker='s')
         self.axes[2].scatter(synths_ids, subject.s_ingame[:, 1], marker='D')
         self.axes[2].set_ylim([0, 1])  # hides the -1 unvalid values
         self.axes[2].set_xlim([min(synths_ids)-0.5, max(synths_ids)+0.5])
         self.axes[2].xaxis.set_ticks(synths_ids)
 
+        self.axes[3].clear()
+        s_adj = subject.get_s_adjusted()  # default best adjustment type
+        self.axes[3].set(ylabel="Adjusted perf. $s_{ij}$", xlabel="Synth ID $j$")
+        self.axes[3].scatter(synths_ids, s_adj[:, 0], marker='s')
+        self.axes[3].scatter(synths_ids, s_adj[:, 1], marker='D')
+        self.axes[3].set_ylim([0, 1])  # hides the -1 unvalid values
+        self.axes[3].set_xlim([min(synths_ids)-0.5, max(synths_ids)+0.5])
+        self.axes[3].xaxis.set_ticks(synths_ids)
+
+        plt.draw()  # or does not update graphically...
         if not self.show_radio_selector:
             figurefiles.save_in_subjects_folder(self.fig, "Perf_subject_{:02d}.pdf".format(subject.index))
 
@@ -191,17 +199,17 @@ def save_all_subjects_to_pdf(expe):
         gc.collect()
 
 
-def plot_all_perfs(expe, plottype='box'):
+def plot_all_perfs(expe, plottype='box', perf_eval_type=perfeval.EvalType.ADJUSTED):
 
     assert expe.global_params.search_types_count == 2, 'This display allows fader/interp search types only'
     if plottype != 'box' and plottype != 'violin':
         raise ValueError('Only \'violin\' plot and \'box\' plot are available')
 
-    all_s = expe.get_all_valid_perfs()
+    all_s = expe.get_all_valid_adjusted_s(perf_eval_type)
 
     fig = plt.figure(figsize=(9, 4))
     ax = fig.add_subplot(111)
-    ax.set(title="Performances $s_{ij}$ of all subjects $i$, per synth $j$",
+    ax.set(title="Performances ({}) $s_{{ij}}$ of all subjects $i$, per synth $j$".format(perf_eval_type.name.lower()),
            xlabel="Synth ID $j$", ylabel="Performances $s_{ij}$")
 
     # box plot of all R data, with empty space after each synth
@@ -233,7 +241,7 @@ def plot_all_perfs(expe, plottype='box'):
             median_props = dict(linestyle='-', linewidth=2.0, color='r')
             mean_point_props = dict(marker='D', markeredgecolor='black', markerfacecolor='r', markersize=4)
             bps.append(ax.boxplot(all_s[synth_index][i%2], positions=[cur_x_tick], sym='{}.'.format(box_color),
-                                widths=[0.6], showmeans=True, medianprops=median_props, meanprops=mean_point_props))
+                                  widths=[0.6], showmeans=True, medianprops=median_props, meanprops=mean_point_props))
             plt.setp(bps[-1]['boxes'], color=box_color)
             plt.setp(bps[-1]['whiskers'], color=box_color)
             plt.setp(bps[-1]['fliers'], color=box_color)
@@ -258,27 +266,33 @@ def plot_all_perfs(expe, plottype='box'):
         tick.label.set_fontsize(8)
 
     fig.tight_layout()
-    figurefiles.save_in_figures_folder(fig, "Perf_all_{}_plot.pdf".format(plottype))
+    figurefiles.save_in_figures_folder(fig, "Perfs_per_synth_{}-{}.pdf".format(plottype, perf_eval_type.value,
+                                                                             perf_eval_type.name.lower()))
 
 
-def plot_perf_and_expertise(expe):
+def fit_perf_vs_expertise(expe, perf_eval_type):
     assert len(expe.subjects[0].mean_s_ingame) == 2, 'Works for 2 methods only (fader + interp)'
 
     # Degrees of polynomial regressions
-    faders_reg_degree = 2  # best is 2
-    interp_reg_degree = 1  # best is 1
+    faders_reg_degree = 2  # best is always 2 (in terms of R2 and RMSE)
+    if perf_eval_type == perfeval.EvalType.FOCUS_ON_TIME or perf_eval_type == perfeval.EvalType.FOCUS_ON_ERROR:
+        interp_reg_degree = 2
+    else: # best is 1, in general.... (in terms of R2 and RMSE)
+        interp_reg_degree = 1
 
     expertise_levels = np.asarray([subject.expertise_level for subject in expe.subjects], dtype=int)
     # vstack of row arrays
-    mean_s = np.vstack( (np.asarray([subject.mean_s_ingame[0] for subject in expe.subjects]),
-                         np.asarray([subject.mean_s_ingame[1] for subject in expe.subjects])) )
+    mean_s = np.vstack((np.asarray([subject.get_mean_s_adjusted(perf_eval_type)[0] for subject in expe.subjects]),
+                        np.asarray([subject.get_mean_s_adjusted(perf_eval_type)[1] for subject in expe.subjects])))
 
     # manual polyfits, because seaborn does not (and will not...) give numerical outputs (only graphs, visualization)
     reg0 = np.polyfit(expertise_levels, mean_s[0, :], faders_reg_degree)
     reg1 = np.polyfit(expertise_levels, mean_s[1, :], interp_reg_degree)
     reg_p = [np.poly1d(reg0), np.poly1d(reg1)]
     for i in range(2):
-        analyse_goodness_of_fit(expertise_levels, mean_s[i, :], reg_p[i], ('Faders' if i == 0 else 'Interp'))
+        plot_name = ('Faders' if i == 0 else 'Interp')
+        plot_name = plot_name + '_eval' + str(perf_eval_type.value)
+        analyse_goodness_of_fit(expertise_levels, mean_s[i, :], reg_p[i], plot_name)
 
     # Seaborn fit graph (underlying functions: np.polyfit)
     fig = plt.figure()
@@ -295,9 +309,11 @@ def plot_perf_and_expertise(expe):
     ax.set_xlim([min(expertise_levels)-0.5, max(expertise_levels)+0.5])
 
     ax.legend(loc='best')
+    ax.text(x=0.8, y=0.1, s='Perf. evaluation type: {}'.format(perf_eval_type.name.lower()),
+            bbox=dict(boxstyle="round", fc="w"))
 
-    fig.tight_layout()
-    figurefiles.save_in_figures_folder(fig, "Perf_and_expertise.pdf")
+    # fig.tight_layout()
+    figurefiles.save_in_figures_folder(fig, "Perf_vs_expertise_eval{}.pdf".format(perf_eval_type))
 
 
 def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
@@ -327,7 +343,7 @@ def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
     # plot of the fitted polynomial itself
     ax.plot(x_fitted_display, y_fitted_display, color='C6')
     ax.scatter(x_data, y_data, color='C7')
-    ax.set(title="Fitted polynomial ({}) for \'{}\'".format(poly_fit.order, fit_name), xlabel="x", ylabel="y")
+    ax.set(title="Fitted polynomial (deg{}) for \'{}\'".format(poly_fit.order, fit_name), xlabel="x", ylabel="y")
 
     # histogram of residuals
     ax2 = fig.add_subplot(1, 2, 2)
@@ -342,7 +358,7 @@ def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
     fig.tight_layout()
     fig.subplots_adjust(bottom=0.2)
 
-    figurefiles.save_in_perfs_folder(fig, "Polyfit_{}_order_{}.pdf".format(fit_name, poly_fit.order))
+    figurefiles.save_in_perfs_fits_folder(fig, "Polyfit_{}_order_{}.pdf".format(fit_name, poly_fit.order))
 
 
 def plot_opinions_on_methods(expe):

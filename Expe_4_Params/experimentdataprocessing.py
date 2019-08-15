@@ -141,15 +141,31 @@ class Experiment:
     def get_subject_info_filename(self, subject_index):
         return "{}Exp{:04d}_info.xml".format(self.path_to_data, subject_index)
 
-    def get_all_valid_perfs(self):
+    def precompute_adjusted_s(self):
+        for subject in self.subjects:
+            subject.precompute_adjusted_s()
+
+    def get_all_valid_ingame_s(self):
         """ Returns a 3D list containing perf results of all subjects, indexed by synth idx and search type """
         all_s = [ [ [] for j2 in range(self.global_params.search_types_count)]
                        for j in range(self.global_params.synths_count) ]
         for j in range(self.global_params.synths_count):
             for j2 in range(self.global_params.search_types_count):
                 for subject in self.subjects:
-                    if subject.s_ingame[j, j2] >= 0.0: # only valid recorded performances are considered
+                    if subject.s_ingame[j, j2] >= 0.0:  # only valid recorded performances are considered
                         all_s[j][j2] += [subject.s_ingame[j, j2]]
+        return all_s
+
+    def get_all_valid_adjusted_s(self, perf_eval_type=perfeval.EvalType.ADJUSTED):
+        """ Returns a 3D list containing perf results of all subjects, indexed by synth idx and search type """
+        all_s = [ [ [] for j2 in range(self.global_params.search_types_count)]
+                       for j in range(self.global_params.synths_count) ]
+        for subject in self.subjects:
+            subject_s_adj = subject.get_s_adjusted(perf_eval_type)
+            for j in range(self.global_params.synths_count):
+                for j2 in range(self.global_params.search_types_count):
+                    if subject_s_adj[j, j2] >= 0.0:  # only valid recorded performances are considered
+                        all_s[j][j2] += [subject_s_adj[j, j2]]
         return all_s
 
     @property
@@ -160,10 +176,10 @@ class Experiment:
             flattened_s.extend(subject.actual_s_ingame_1d)
         return np.array(flattened_s)
 
-    def get_all_actual_adjusted_s_1d(self, adjustement_type=perfeval.get_best_type()):
+    def get_all_actual_adjusted_s_1d(self, adjustment_type):
         flattened_s = []  # because it involves memory allocations: use of a python list...
         for subject in self.subjects:
-            flattened_s.extend(subject.get_actual_s_adjusted_1d(adjustement_type))
+            flattened_s.extend(subject.get_actual_s_adjusted_1d(adjustment_type))
         return np.array(flattened_s)
 
 
@@ -359,7 +375,7 @@ class Subject:
                         # -> this product is the default with numpy arrays (numpy matrices are not actually common...)
                         self.data[j][j2][k] *= normalization_matrix
 
-        # - - - - - - - - Processing of loaded data : 2 steps - - - - - - - -
+        # - - - - - - - - Processing of loaded data : 3 steps - - - - - - - -
         # -> Step 1: performance measured at the end of each cycle. Errors are normalized.
         # pre-allocation of e, d, and s lists - will be 1,5 D lists (synth, interp)
         # (e = error samples, d = duration samples, s = perf score samples)
@@ -383,6 +399,16 @@ class Subject:
         self.mean_s_ingame = [-1.0 for j2 in range(self.search_types_count)]
         for j2 in range(self.search_types_count):
             self.mean_s_ingame[j2] = statistics.mean([s for s in self.s_ingame[:, j2] if (s >= 0.0)])
+        # -> Step 3: data to be precomputed later
+        self.s_adjusted = None
+
+    def precompute_adjusted_s(self):
+        """ After construction or unpickling of the class, this method must be called to refresh
+        the computation of all possible adjusted performance scores. """
+        self.s_adjusted = list()
+        for eval_type in perfeval.EvalType:
+            if eval_type != perfeval.EvalType.COUNT:
+                self.s_adjusted.append(self._compute_s_adjusted(eval_type))
 
     @property
     def actual_s_ingame_1d(self):
@@ -391,19 +417,34 @@ class Subject:
         s_notrial = s_notrial.flatten()
         return s_notrial[s_notrial >= 0.0]
 
-    def get_s_adjusted(self, adjustement_type):
+    def get_s_adjusted(self, adjustment_type):
+        if self.s_adjusted is None:
+            raise RuntimeError("Adjusted performances are not pre-computed yet.")
+        if 0 <= int(adjustment_type) < int(perfeval.EvalType.COUNT):
+            return self.s_adjusted[int(adjustment_type)]
+        else:
+            raise ValueError("Requested adjustment function type is not valid.")
+
+    def _compute_s_adjusted(self, adjustment_type):
         s_adj = np.full((self.synths_count, self.search_types_count), -1.0)
         for j in range(0, len(self.data)):
             for j2 in range(0, len(self.data[j])):
                 if self.is_cycle_valid[j, j2]:
-                    error_type = perfeval.get_error_type_for_adjustement(adjustement_type)
+                    error_type = perfeval.get_error_type_for_adjustment(adjustment_type)
                     if error_type == 1:
                         error_adjusted = self.e_norm1[j, j2]
                     elif error_type == 2:
                         error_adjusted = self.e_norm2[j, j2]
                     s_adj[j, j2] = perfeval.adjusted_eval(error_adjusted, self.d[j, j2],
-                                                          self.global_params.allowed_time, adjustement_type)
+                                                          self.global_params.allowed_time, adjustment_type)
         return s_adj
+
+    def get_mean_s_adjusted(self, adjustment_type):
+        s_adj = self.get_s_adjusted(adjustment_type)
+        mean_s = [-1.0 for j2 in range(self.search_types_count)]
+        for j2 in range(self.search_types_count):
+            mean_s[j2] = statistics.mean([s for s in s_adj[:, j2] if (s >= 0.0)])
+        return mean_s
 
     def get_actual_s_adjusted_1d(self, adjustement_type):
         """ Flattened array of all adjusted perfs, unsorted, not included trial or unvalid data. """

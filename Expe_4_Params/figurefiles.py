@@ -1,9 +1,10 @@
 
 import os
 
+
 figures_folder = "./Figures"
 subjects_subfolder = "Subjects"
-perfs_subfolder = "Perfs"
+perfs_fits_subfolder = "Perfs_fits"
 
 
 def try_create_figures_folder():
@@ -24,9 +25,9 @@ def save_in_subjects_folder(fig, filename):
     fig.savefig("{}/{}".format(subjects_folder, filename))
 
 
-def save_in_perfs_folder(fig, filename):
+def save_in_perfs_fits_folder(fig, filename):
     try_create_figures_folder()
-    perfs_folder = "{}/{}".format(figures_folder, perfs_subfolder)
+    perfs_folder = "{}/{}".format(figures_folder, perfs_fits_subfolder)
     if not os.path.exists(perfs_folder):
         os.mkdir(perfs_folder)
     fig.savefig("{}/{}".format(perfs_folder, filename))
