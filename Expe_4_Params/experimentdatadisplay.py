@@ -5,6 +5,7 @@ import math
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RadioButtons
 import numpy as np
+import pandas as pd
 import seaborn as sns
 
 import experimentdataprocessing as edp
@@ -21,7 +22,8 @@ def plot_age_and_sex(expe):
     plt.scatter(female_ages, np.full(len(female_ages), edp.SexType.FEMALE))
     plt.scatter(male_ages, np.full(len(male_ages), edp.SexType.MALE))
     plt.scatter(other_ages, np.full(len(other_ages), edp.SexType.NON_BINARY))
-    ax.set(title="Age and sex of subjects", xlabel="Age", ylabel="Sex")
+    ax.set(title="Age and sex of the {} subjects".format(len(expe.subjects)),
+           xlabel="Age", ylabel="Sex")
     ax.set_ylim(-0.5, 2.5)
     ax.yaxis.set(ticks=range(0, 3), ticklabels=["non-binary", "male", "female"])
     plt.grid(linestyle="--", alpha=0.5)
@@ -87,7 +89,7 @@ class SubjectPerformancesVisualizer:
         self.axes[2].xaxis.set_ticks(synths_ids)
 
         self.axes[3].clear()
-        s_adj = subject.get_s_adjusted()  # default best adjustment type
+        s_adj = subject.get_s_adjusted(adjustment_type=perfeval.EvalType.ADJUSTED)  # default best adjustment type
         self.axes[3].set(ylabel="Adjusted perf. $s_{ij}$", xlabel="Synth ID $j$")
         self.axes[3].scatter(synths_ids, s_adj[:, 0], marker='s')
         self.axes[3].scatter(synths_ids, s_adj[:, 1], marker='D')
@@ -152,10 +154,10 @@ class SubjectCurvesVisualizer:
             search_type = subject.search_types_in_appearance_order[j]
             if synth_index >= 0 and search_type >= 0 and subject.is_cycle_valid[synth_index, search_type]:
                 if search_type == 0:
-                    fader_or_interp_char = 'F'
+                    fader_or_interp_char = 'S'
                 else:
                     fader_or_interp_char = 'I'
-                self.axes[row, col].set_title('{} {}'.format(fader_or_interp_char, synths[synth_index].name), size=10)
+                self.axes[row, col].set_title('[{}]{}'.format(fader_or_interp_char, synths[synth_index].name), size=10)
 
                 for k in range(subject.params_count):
                     self.axes[row, col].plot(subject.data[synth_index][search_type][k][:, 0],
@@ -199,13 +201,28 @@ def save_all_subjects_to_pdf(expe):
         gc.collect()
 
 
-def plot_all_perfs(expe, plottype='box', perf_eval_type=perfeval.EvalType.ADJUSTED):
+def plot_all_perfs(expe, perf_eval_type=perfeval.EvalType.ADJUSTED):
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111)
+    #ax.violinplot(expe.get_all_actual_s_2d(perf_eval_type), showmedians=True, showmeans=True, showextrema=True)
+    perfs_df = pd.DataFrame.from_records(expe.get_all_actual_s_2d(perf_eval_type))
+    perfs_df.columns = ['Sliders', 'Interpolation']
+    sns.violinplot(data=perfs_df, ax=ax, bw=0.15)
+    ax.set_ylim(0.0, 1.0)
+    ax.set(title="Performances of all subjects (eval. function = {})".format(perf_eval_type.name.lower()),
+           xlabel="Research type", ylabel="Performance scores")
+    plt.tight_layout()
 
-    assert expe.global_params.search_types_count == 2, 'This display allows fader/interp search types only'
+    # TODO ANOVA
+
+
+def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalType.ADJUSTED):
+
+    assert expe.global_params.search_types_count == 2, 'This display allows slider/interp search types only'
     if plottype != 'box' and plottype != 'violin':
         raise ValueError('Only \'violin\' plot and \'box\' plot are available')
 
-    all_s = expe.get_all_valid_adjusted_s(perf_eval_type)
+    all_s = expe.get_all_valid_s(perf_eval_type)
 
     fig = plt.figure(figsize=(9, 4))
     ax = fig.add_subplot(111)
@@ -223,7 +240,7 @@ def plot_all_perfs(expe, plottype='box', perf_eval_type=perfeval.EvalType.ADJUST
         if (cur_x_tick % 3 == 0):  # space
             ax.axvline(x=cur_x_tick, ymin=0.0, ymax=1.0, color='black', linewidth=0.5)
             x_ticks.append(cur_x_tick)
-            x_ticks_labels.append('|')
+            x_ticks_labels.append(' ')
             cur_x_tick += 1
 
         # actual boxplot at every iteration
@@ -231,10 +248,10 @@ def plot_all_perfs(expe, plottype='box', perf_eval_type=perfeval.EvalType.ADJUST
         synth_id = synth_index-expe.global_params.synths_trial_count
         if (i%2) == 0:
             box_color = 'C0'
-            x_ticks_labels.append('F{}'.format(synth_id))
+            x_ticks_labels.append('{} (sliders)'.format(synth_id))
         else:  # separating line after each synth
             box_color = 'C1'
-            x_ticks_labels.append('I{}'.format(synth_id))
+            x_ticks_labels.append('{} (interp.)'.format(synth_id))
 
         if plottype == 'box':
             # artist costomization from https://matplotlib.org/3.1.0/gallery/statistics/boxplot.html
@@ -254,31 +271,29 @@ def plot_all_perfs(expe, plottype='box', perf_eval_type=perfeval.EvalType.ADJUST
 
     if plottype == 'box':
         ax.legend([bps[0]['boxes'][0], bps[1]['boxes'][0], bps[0]['medians'][0], bps[0]['means'][0]],
-                  ['Faders method', 'Interp method', 'medians', 'means $\\overline{s_j}$'],
+                  ['Sliders method', 'Interp. method', 'medians', 'means $\\overline{s_j}$'],
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
     elif plottype == 'violin':
         pass  # not enough at the moment to really use a violin plot...
 
     ax.set_ylim([0, 1])
     ax.set_xlim([0, cur_x_tick])
-    ax.xaxis.set(ticks=x_ticks, ticklabels=x_ticks_labels)
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels(x_ticks_labels, rotation=90)
     for tick in ax.xaxis.get_major_ticks():
         tick.label.set_fontsize(8)
 
     fig.tight_layout()
     figurefiles.save_in_figures_folder(fig, "Perfs_per_synth_{}-{}.pdf".format(plottype, perf_eval_type.value,
-                                                                             perf_eval_type.name.lower()))
+                                                                               perf_eval_type.name.lower()))
 
 
-def fit_perf_vs_expertise(expe, perf_eval_type):
+def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     assert len(expe.subjects[0].mean_s_ingame) == 2, 'Works for 2 methods only (fader + interp)'
 
     # Degrees of polynomial regressions
-    faders_reg_degree = 2  # best is always 2 (in terms of R2 and RMSE)
-    if perf_eval_type == perfeval.EvalType.FOCUS_ON_TIME or perf_eval_type == perfeval.EvalType.FOCUS_ON_ERROR:
-        interp_reg_degree = 2
-    else: # best is 1, in general.... (in terms of R2 and RMSE)
-        interp_reg_degree = 1
+    faders_reg_degree = 2  # best is always 2 (in terms of R2 and RMSE)  # TODO vérifier si 1 ne suffit pas
+    interp_reg_degree = 2  # TODO vérifier avec + de données si ordre 2 est nécessaire (1 peut être suffisant)
 
     expertise_levels = np.asarray([subject.expertise_level for subject in expe.subjects], dtype=int)
     # vstack of row arrays
@@ -286,13 +301,14 @@ def fit_perf_vs_expertise(expe, perf_eval_type):
                         np.asarray([subject.get_mean_s_adjusted(perf_eval_type)[1] for subject in expe.subjects])))
 
     # manual polyfits, because seaborn does not (and will not...) give numerical outputs (only graphs, visualization)
-    reg0 = np.polyfit(expertise_levels, mean_s[0, :], faders_reg_degree)
-    reg1 = np.polyfit(expertise_levels, mean_s[1, :], interp_reg_degree)
-    reg_p = [np.poly1d(reg0), np.poly1d(reg1)]
-    for i in range(2):
-        plot_name = ('Faders' if i == 0 else 'Interp')
-        plot_name = plot_name + '_eval' + str(perf_eval_type.value)
-        analyse_goodness_of_fit(expertise_levels, mean_s[i, :], reg_p[i], plot_name)
+    if show_fit_analysis:
+        reg0 = np.polyfit(expertise_levels, mean_s[0, :], faders_reg_degree)
+        reg1 = np.polyfit(expertise_levels, mean_s[1, :], interp_reg_degree)
+        reg_p = [np.poly1d(reg0), np.poly1d(reg1)]
+        for i in range(2):
+            plot_name = ('Sliders' if i == 0 else 'Interp')
+            plot_name = plot_name + '_eval' + str(perf_eval_type.value)
+            analyse_goodness_of_fit(expertise_levels, mean_s[i, :], reg_p[i], plot_name)
 
     # Seaborn fit graph (underlying functions: np.polyfit)
     fig = plt.figure()
@@ -301,7 +317,7 @@ def fit_perf_vs_expertise(expe, perf_eval_type):
            xlabel="Estimated expertise level", ylabel="Mean performance $\\overline{s_i}$")
 
     regplot0 = sns.regplot(x=expertise_levels, y=mean_s[0, :], order=faders_reg_degree,
-                           label="Faders method", marker='s')
+                           label="Sliders method", marker='s')
     regplot1 = sns.regplot(x=expertise_levels, y=mean_s[1, :], order=interp_reg_degree,
                            label="Interp method", marker='D')
 

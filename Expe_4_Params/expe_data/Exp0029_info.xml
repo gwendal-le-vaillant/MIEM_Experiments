@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment UID="29" is_valid="true">
+    <start_date year="2019" month="8" month_name="August" day="21" day_name="Wednesday" hours="10" minutes="24"/>
+    <first_questions>
+        <data_usage allow="true"/>
+        <age>48</age>
+        <sex>male</sex>
+        <vision_impairment checked="false"/>
+        <hearing_impairment checked="false"/>
+    </first_questions>
+    <final_questions answered="true">
+        <expertise_level>5</expertise_level>
+        <methods_opinion fastest="interpolation" most_precise="fader" most_intuitive="interpolation" preferred="interpolation"/>
+        <similar_interface checked="true">Lemur, TouchOSC, Open Stage Control, Mira</similar_interface>
+        <similar_expe checked="false"/>
+        <remark is_empty="false">Il y avait un son de ronflette dans le casque durant toute l&apos;expérience. Par ailleurs, j&apos;ignore si c&apos;est normal ou non, mais on entend certains sons de l&apos;environnement dans le casque (ambulances...)</remark>
+    </final_questions>
+    <tested_presets count="22">
+        <preset synth_id="-2" name="[T] Wurli" from_interpolation="false" appearance_index="-2" is_valid="true" samples_count="529"/>
+        <preset synth_id="-1" name="[T] Arpesque" from_interpolation="true" appearance_index="-1" is_valid="true" samples_count="614"/>
+        <preset synth_id="5" name="[5] MoodySky" from_interpolation="false" appearance_index="0" is_valid="true" samples_count="512"/>
+        <preset synth_id="9" name="[9] AntiqueStr" from_interpolation="true" appearance_index="1" is_valid="true" samples_count="816"/>
+        <preset synth_id="4" name="[4] Hypno" from_interpolation="true" appearance_index="2" is_valid="true" samples_count="657"/>
+        <preset synth_id="1" name="[1] Shamisen" from_interpolation="true" appearance_index="3" is_valid="true" samples_count="1723"/>
+        <preset synth_id="3" name="[3] TriOsc" from_interpolation="true" appearance_index="4" is_valid="true" samples_count="166"/>
+        <preset synth_id="0" name="[0] ThunderBass" from_interpolation="true" appearance_index="5" is_valid="true" samples_count="675"/>
+        <preset synth_id="2" name="[2] DabDat" from_interpolation="false" appearance_index="6" is_valid="true" samples_count="300"/>
+        <preset synth_id="6" name="[6] Piano" from_interpolation="false" appearance_index="7" is_valid="true" samples_count="293"/>
+        <preset synth_id="7" name="[7] DX7block" from_interpolation="true" appearance_index="8" is_valid="true" samples_count="193"/>
+        <preset synth_id="4" name="[4] Hypno" from_interpolation="false" appearance_index="9" is_valid="true" samples_count="200"/>
+        <preset synth_id="1" name="[1] Shamisen" from_interpolation="false" appearance_index="10" is_valid="true" samples_count="211"/>
+        <preset synth_id="6" name="[6] Piano" from_interpolation="true" appearance_index="11" is_valid="true" samples_count="626"/>
+        <preset synth_id="8" name="[8] SubGamelan" from_interpolation="true" appearance_index="12" is_valid="true" samples_count="1065"/>
+        <preset synth_id="7" name="[7] DX7block" from_interpolation="false" appearance_index="13" is_valid="true" samples_count="482"/>
+        <preset synth_id="3" name="[3] TriOsc" from_interpolation="false" appearance_index="14" is_valid="true" samples_count="431"/>
+        <preset synth_id="0" name="[0] ThunderBass" from_interpolation="false" appearance_index="15" is_valid="true" samples_count="435"/>
+        <preset synth_id="5" name="[5] MoodySky" from_interpolation="true" appearance_index="16" is_valid="true" samples_count="1316"/>
+        <preset synth_id="2" name="[2] DabDat" from_interpolation="true" appearance_index="17" is_valid="true" samples_count="609"/>
+        <preset synth_id="9" name="[9] AntiqueStr" from_interpolation="false" appearance_index="18" is_valid="true" samples_count="596"/>
+        <preset synth_id="8" name="[8] SubGamelan" from_interpolation="false" appearance_index="19" is_valid="true" samples_count="391"/>
+    </tested_presets>
+</experiment>

@@ -3,10 +3,10 @@
   <component name="ChangeListManager">
     <list default="true" id="fe4fe2fb-8eab-4f44-af1f-fc1288d6d0b5" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/expe_data/A_OSC_Recorder_Experiment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/expe_data/A_OSC_Recorder_Experiment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/experiment4params.py" beforeDir="false" afterPath="$PROJECT_DIR$/experiment4params.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/experimentdatadisplay.py" beforeDir="false" afterPath="$PROJECT_DIR$/experimentdatadisplay.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/experimentdataprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/experimentdataprocessing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/figurefiles.py" beforeDir="false" afterPath="$PROJECT_DIR$/figurefiles.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/perfeval.py" beforeDir="false" afterPath="$PROJECT_DIR$/perfeval.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -22,22 +22,8 @@
       </list>
     </option>
   </component>
-  <component name="FindInProjectRecents">
-    <findStrings>
-      <find>is_synth_va</find>
-      <find>GlobalParam</find>
-      <find>ticks</find>
-      <find>scatter</find>
-      <find>text</find>
-    </findStrings>
-  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
-  </component>
-  <component name="ProjectFrameBounds">
-    <option name="y" value="23" />
-    <option name="width" value="1843" />
-    <option name="height" value="1057" />
   </component>
   <component name="ProjectId" id="1PSLE6mEaIbp1cd3m7sNMjB7xqK" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
@@ -137,7 +123,9 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="COLUMN_ORDER" />
+            </State>
           </value>
         </entry>
       </map>

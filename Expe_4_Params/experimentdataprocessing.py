@@ -145,18 +145,7 @@ class Experiment:
         for subject in self.subjects:
             subject.precompute_adjusted_s()
 
-    def get_all_valid_ingame_s(self):
-        """ Returns a 3D list containing perf results of all subjects, indexed by synth idx and search type """
-        all_s = [ [ [] for j2 in range(self.global_params.search_types_count)]
-                       for j in range(self.global_params.synths_count) ]
-        for j in range(self.global_params.synths_count):
-            for j2 in range(self.global_params.search_types_count):
-                for subject in self.subjects:
-                    if subject.s_ingame[j, j2] >= 0.0:  # only valid recorded performances are considered
-                        all_s[j][j2] += [subject.s_ingame[j, j2]]
-        return all_s
-
-    def get_all_valid_adjusted_s(self, perf_eval_type=perfeval.EvalType.ADJUSTED):
+    def get_all_valid_s(self, perf_eval_type=perfeval.EvalType.ADJUSTED):
         """ Returns a 3D list containing perf results of all subjects, indexed by synth idx and search type """
         all_s = [ [ [] for j2 in range(self.global_params.search_types_count)]
                        for j in range(self.global_params.synths_count) ]
@@ -168,15 +157,33 @@ class Experiment:
                         all_s[j][j2] += [subject_s_adj[j, j2]]
         return all_s
 
-    @property
-    def all_actual_ingame_s_1d(self):
-        """ Returns a flattend 1D numpy array of all perfs. Does not include trial or unvalid perfs. """
-        flattened_s = []  # because it involves memory allocations: use of a python list...
+    def get_all_valid_s(self, perf_eval_type=perfeval.EvalType.ADJUSTED):
+        """ Returns a 3D list containing perf results of all subjects, indexed by synth idx and search type """
+        all_s = [ [ [] for j2 in range(self.global_params.search_types_count)]
+                       for j in range(self.global_params.synths_count) ]
         for subject in self.subjects:
-            flattened_s.extend(subject.actual_s_ingame_1d)
-        return np.array(flattened_s)
+            subject_s_adj = subject.get_s_adjusted(perf_eval_type)
+            for j in range(self.global_params.synths_count):
+                for j2 in range(self.global_params.search_types_count):
+                    if subject_s_adj[j, j2] >= 0.0:  # only valid recorded performances are considered
+                        all_s[j][j2] += [subject_s_adj[j, j2]]
+        return all_s
 
-    def get_all_actual_adjusted_s_1d(self, adjustment_type):
+    def get_all_actual_s_2d(self, perf_eval_type=perfeval.EvalType.ADJUSTED):
+        """ Returns a 2D list containing perf results of all subjects, indexed by search type (interp/fader) only """
+        all_s = list()
+        for subject in self.subjects:
+            subject_s_adj = subject.get_s_adjusted(perf_eval_type)
+            for j in range(self.global_params.synths_count):
+                temp_perfs = []
+                for j2 in range(self.global_params.search_types_count):
+                    temp_perfs += [subject_s_adj[j, j2]]
+                if min(temp_perfs) >= 0.0:  # only full-valid recorded performances are considered
+                    all_s.append( temp_perfs )
+        return all_s
+
+    def get_all_actual_s_1d(self, adjustment_type):
+        """ Returns a flattend 1D numpy array of all perfs. Does not include trial or unvalid perfs. """
         flattened_s = []  # because it involves memory allocations: use of a python list...
         for subject in self.subjects:
             flattened_s.extend(subject.get_actual_s_adjusted_1d(adjustment_type))

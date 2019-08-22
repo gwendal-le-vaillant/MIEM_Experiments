@@ -137,7 +137,7 @@ class Analyzer:
             fig.colorbar(surf, aspect=18)
 
             ax_adj_hist = fig.add_subplot(len(adj_types), 2, 2 + 2*i)
-            adjusted_s = self.expe.get_all_actual_adjusted_s_1d(adjustment_type=adj_types[i])
+            adjusted_s = self.expe.get_all_actual_s_1d(adjustment_type=adj_types[i])
             sns.distplot(adjusted_s, bins=self.histogram_bins,
                          kde=True, kde_kws={"bw": self.kde_bw}, ax=ax_adj_hist)
             ax_adj_hist.axvline(np.mean(adjusted_s), color='r', linestyle='--')
