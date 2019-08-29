@@ -201,7 +201,7 @@ def save_all_subjects_to_pdf(expe):
         gc.collect()
 
 
-def plot_all_perfs(expe, perf_eval_type=perfeval.EvalType.ADJUSTED):
+def all_perfs_violinplots(expe, perf_eval_type=perfeval.EvalType.ADJUSTED):
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111)
     #ax.violinplot(expe.get_all_actual_s_2d(perf_eval_type), showmedians=True, showmeans=True, showextrema=True)
@@ -214,6 +214,28 @@ def plot_all_perfs(expe, perf_eval_type=perfeval.EvalType.ADJUSTED):
     plt.tight_layout()
 
     # TODO ANOVA
+
+
+def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED):
+    histogram_bins = np.linspace(0.0, 1.0, 20)
+    kde_bw = 0.05
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111)
+
+    adjusted_s_2d = np.array(expe.get_all_actual_s_2d(perf_eval_type))
+    distplot0 = sns.distplot(adjusted_s_2d[:, 0], bins=histogram_bins,
+                            kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Sliders method')
+    distplot1 = sns.distplot(adjusted_s_2d[:, 1], bins=histogram_bins,
+                            kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Interp. method')
+    ax.legend(loc='best')
+
+    ax.set_xlim(0.0, 1.0)
+    ax.set(title="Performances of all subjects (eval. function = {})".format(perf_eval_type.name.lower()),
+           xlabel="Performance scores", ylabel="Normalized counts and estimated PDF")
+    plt.tight_layout()
+
+    # TODO un p'tit ANOVA ici aussi...
 
 
 def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalType.ADJUSTED):
