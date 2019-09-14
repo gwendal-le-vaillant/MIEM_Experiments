@@ -21,7 +21,7 @@ if (subject_index >= 0) and (subject_index < len(expe4.subjects)):
 #edd.save_all_subjects_to_pdf(expe4)
 
 # ----- 2 - Analysis of performance evaluation function -----
-perfs_analyzer = perfeval.Analyzer(expe4)
+#perfs_analyzer = perfeval.Analyzer(expe4)
 #perfs_analyzer.compare_adjusted([perfeval.EvalType.INGAME, perfeval.EvalType.ADJUSTED_NORM2, perfeval.EvalType.ADJUSTED])
 #perfs_analyzer.compare_adjusted()  # default: comparison of best chosen functions
 
@@ -31,11 +31,11 @@ edd.all_perfs_histogram(expe4)  # default: adjusted perf eval
 edd.all_perfs_violinplots(expe4, perf_eval_type=perfeval.EvalType.INGAME)
 edd.all_perfs_violinplots(expe4)  # default: adjusted perf eval
 #edd.plot_all_perfs_per_synth(expe4, perf_eval_type=perfeval.EvalType.INGAME)
-#edd.plot_all_perfs_per_synth(expe4)
-#edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.INGAME)
-#edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.ADJUSTED)
-#edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_TIME)
-#edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_ERROR)
+edd.plot_all_perfs_per_synth(expe4)
+edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.INGAME)
+edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.ADJUSTED)
+edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_TIME)
+edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_ERROR)
 
 # ----- 4 - Others -----
 #edd.plot_opinions_on_methods(expe4)
