@@ -7,6 +7,7 @@ from matplotlib.widgets import RadioButtons
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy import stats
 
 import experimentdataprocessing as edp
 import figurefiles
@@ -213,10 +214,12 @@ def all_perfs_violinplots(expe, perf_eval_type=perfeval.EvalType.ADJUSTED):
            xlabel="Research type", ylabel="Performance scores")
     plt.tight_layout()
 
-    # TODO ANOVA
+    # TODO ANOVA, ou KS ?
 
 
-def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED):
+def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display_KS=False):
+    """ Shows all performances sorted in 2 groups (sliders and interp.), and displays
+    the p-value of the Kolmogorov-Smirnov test """
     histogram_bins = np.linspace(0.0, 1.0, 20)
     kde_bw = 0.05
 
@@ -225,17 +228,23 @@ def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED):
 
     adjusted_s_2d = np.array(expe.get_all_actual_s_2d(perf_eval_type))
     distplot0 = sns.distplot(adjusted_s_2d[:, 0], bins=histogram_bins,
-                            kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Sliders method')
+                             kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Sliders method')
     distplot1 = sns.distplot(adjusted_s_2d[:, 1], bins=histogram_bins,
-                            kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Interp. method')
+                             kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Interp. method')
     ax.legend(loc='best')
-
     ax.set_xlim(0.0, 1.0)
     ax.set(title="Performances of all subjects (eval. function = {})".format(perf_eval_type.name.lower()),
            xlabel="Performance scores", ylabel="Normalized counts and estimated PDF")
-    plt.tight_layout()
 
-    # TODO un p'tit ANOVA ici aussi...
+    # Komolgorov-Smirnov test using scipy stats. The null hypothesis is 'the 2 samples are drawn from
+    # the same distribution'. Null hypothesis can be rejected is p-value is small.
+    # Obvious results.... p-value is around 10^-19
+    if display_KS:
+        [ks_stat, p_value] = stats.ks_2samp(adjusted_s_2d[:, 0], adjusted_s_2d[:, 1], alternative='two-sided')
+        ax.text(x=0.1, y=0.1, s='KS-stat={}, p-value={}'.format(ks_stat, p_value),
+                bbox=dict(boxstyle="round", fc="w"))
+
+    plt.tight_layout()
 
 
 def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalType.ADJUSTED):
