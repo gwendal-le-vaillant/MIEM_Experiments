@@ -37,13 +37,13 @@ perfs_analyzer = perfeval.Analyzer(expe4)
 # edd.plot_all_perfs_per_synth(expe4, perf_eval_type=perfeval.EvalType.INGAME)
 # edd.plot_all_perfs_per_synth(expe4)
 # ----- ----- 3 c) Sorted by method and expertise level
-edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.INGAME)
-edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.FOCUS_ON_TIME)
-edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.FOCUS_ON_ERROR)
-edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.ADJUSTED)
+# edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.INGAME)
+# edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.FOCUS_ON_TIME)
+# edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.FOCUS_ON_ERROR)
+edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.ADJUSTED, add_swarm_plot=True)
 # ----- ----- 3 d) MEAN perfs, sorted by method and expertise level
 # edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.INGAME)
-# edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.ADJUSTED)
+edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.ADJUSTED, show_fit_analysis=True)
 # edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_TIME)
 # edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_ERROR)
 

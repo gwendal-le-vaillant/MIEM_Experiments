@@ -329,7 +329,11 @@ def plot_all_perfs_by_expertise(expe, perf_eval_type, add_swarm_plot=False):
     if add_swarm_plot:
         sns.swarmplot(x="expertise_level", y="performance", hue='search_type', data=s_df, ax=ax,
                       dodge=True, size=3, color='black')
+        # from https://stackoverflow.com/questions/36267705/avoiding-repeated-legend-in-seaborn-boxplot-overlaid-by-swarmplot
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[:2], labels[:2])
 
+    ax.set_ylim(0.0, 1.0)
     ax.set(title="Performances sorted by expertise of subjects (eval. function = {})"
            .format(perf_eval_type.name.lower()))
     #fig.tight_layout()
@@ -339,8 +343,8 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     assert len(expe.subjects[0].mean_s_ingame) == 2, 'Works for 2 methods only (fader + interp)'
 
     # Degrees of polynomial regressions
-    faders_reg_degree = 2  # best is always 2 (in terms of R2 and RMSE)  # TODO vérifier si 1 ne suffit pas
-    interp_reg_degree = 2  # TODO vérifier avec + de données si ordre 2 est nécessaire (1 peut être suffisant)
+    faders_reg_degree = 1  # best is always 2 (in terms of R2 and RMSE)  # TODO vérifier si 1 ne suffit pas
+    interp_reg_degree = 1  # TODO vérifier avec + de données si ordre 2 est nécessaire (1 peut être suffisant)
 
     expertise_levels = np.asarray([subject.expertise_level for subject in expe.subjects], dtype=int)
     # vstack of row arrays
