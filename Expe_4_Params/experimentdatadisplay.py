@@ -260,7 +260,7 @@ def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalT
     ax.set(title="Performances ({}) $s_{{ij}}$ of all subjects $i$, per synth $j$".format(perf_eval_type.name.lower()),
            xlabel="Synth ID $j$", ylabel="Performances $s_{ij}$")
 
-    # box plot of all R data, with empty space after each synth
+    # box plot of all S perfs data, with empty space after each synth
     synths_range = range(expe.global_params.synths_trial_count*2, expe.global_params.synths_count * 2)
     cur_x_tick = 0
     x_ticks = []
@@ -319,6 +319,22 @@ def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalT
                                                                                perf_eval_type.name.lower()))
 
 
+def plot_all_perfs_by_expertise(expe, perf_eval_type, add_swarm_plot=False):
+    """ Builds box-plots of all performances, sorted by method and by expertise level """
+    fig = plt.figure(figsize=(7, 4))
+    ax = fig.add_subplot(111)
+
+    s_df = expe.get_all_s_dataframe(perf_eval_type)
+    sns.boxplot(x="expertise_level", y="performance", hue='search_type', data=s_df, ax=ax)
+    if add_swarm_plot:
+        sns.swarmplot(x="expertise_level", y="performance", hue='search_type', data=s_df, ax=ax,
+                      dodge=True, size=3, color='black')
+
+    ax.set(title="Performances sorted by expertise of subjects (eval. function = {})"
+           .format(perf_eval_type.name.lower()))
+    #fig.tight_layout()
+
+
 def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     assert len(expe.subjects[0].mean_s_ingame) == 2, 'Works for 2 methods only (fader + interp)'
 
@@ -331,7 +347,7 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     mean_s = np.vstack((np.asarray([subject.get_mean_s_adjusted(perf_eval_type)[0] for subject in expe.subjects]),
                         np.asarray([subject.get_mean_s_adjusted(perf_eval_type)[1] for subject in expe.subjects])))
 
-    # manual polyfits, because seaborn does not (and will not...) give numerical outputs (only graphs, visualization)
+    # manual polyfits, because seaborn does not (and will not...) give numerical outputs (only graphs, visualizations)
     if show_fit_analysis:
         reg0 = np.polyfit(expertise_levels, mean_s[0, :], faders_reg_degree)
         reg1 = np.polyfit(expertise_levels, mean_s[1, :], interp_reg_degree)

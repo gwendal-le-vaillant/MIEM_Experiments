@@ -16,7 +16,7 @@ import perfeval
 
 class MethodType(IntEnum):
     NONE = -1
-    FADER = 0   # independant control of independant parameters
+    SLIDERS = 0   # independant control of independant parameters
     INTERP = 1  # interpolation between presets
 
 
@@ -110,10 +110,10 @@ class Experiment:
                                                   'preferred': [subject.methods_opinion.preferred
                                                                 for subject in self.subjects]})
         # dataframe to be displayed directly in a bar plot - index will be the absissa
-        faders_counts = [len([0 for subject in self.subjects if subject.methods_opinion.fastest == MethodType.FADER]),
-                         len([0 for subject in self.subjects if subject.methods_opinion.most_precise == MethodType.FADER]),
-                         len([0 for subject in self.subjects if subject.methods_opinion.most_intuitive == MethodType.FADER]),
-                         len([0 for subject in self.subjects if subject.methods_opinion.preferred == MethodType.FADER])]
+        faders_counts = [len([0 for subject in self.subjects if subject.methods_opinion.fastest == MethodType.SLIDERS]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.most_precise == MethodType.SLIDERS]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.most_intuitive == MethodType.SLIDERS]),
+                         len([0 for subject in self.subjects if subject.methods_opinion.preferred == MethodType.SLIDERS])]
         interp_counts = [len([0 for subject in self.subjects if subject.methods_opinion.fastest == MethodType.INTERP]),
                          len([0 for subject in self.subjects if subject.methods_opinion.most_precise == MethodType.INTERP]),
                          len([0 for subject in self.subjects if subject.methods_opinion.most_intuitive == MethodType.INTERP]),
@@ -142,8 +142,19 @@ class Experiment:
         return "{}Exp{:04d}_info.xml".format(self.path_to_data, subject_index)
 
     def precompute_adjusted_s(self):
+        """ Precomputes adjusted performances of all subjects, and stores
+         all results in pandas dataframes (one df for each perf_eval_type) """
         for subject in self.subjects:
             subject.precompute_adjusted_s()
+        # Construction of the main pandas dataframes
+        self.all_s_dataframes = list()
+        for eval_type in perfeval.EvalType:
+            list_of_dataframes = list()  # list of all subjects' dataframes (will be concatenated)
+            if eval_type != perfeval.EvalType.COUNT:
+                # construction of lists of lists of perfs, subject id, etc....
+                for subject in self.subjects:
+                    list_of_dataframes.append( subject.get_all_s_dataframe(eval_type) )
+                self.all_s_dataframes.append(pd.concat(list_of_dataframes))  # 1 dataframe for 1 perf eval type
 
     def get_all_valid_s(self, perf_eval_type=perfeval.EvalType.ADJUSTED):
         """ Returns a 3D list containing perf results of all subjects, indexed by synth idx and search type """
@@ -188,6 +199,9 @@ class Experiment:
         for subject in self.subjects:
             flattened_s.extend(subject.get_actual_s_adjusted_1d(adjustment_type))
         return np.array(flattened_s)
+
+    def get_all_s_dataframe(self, perf_eval_type=perfeval.EvalType.ADJUSTED):
+        return self.all_s_dataframes[int(perf_eval_type)]
 
 
 class GlobalParameters:
@@ -417,13 +431,6 @@ class Subject:
             if eval_type != perfeval.EvalType.COUNT:
                 self.s_adjusted.append(self._compute_s_adjusted(eval_type))
 
-    @property
-    def actual_s_ingame_1d(self):
-        """ Flattened array of all in-game perfs, unsorted, not included trial or unvalid data. """
-        s_notrial = self.s_ingame[self.global_params.synths_trial_count:, :]
-        s_notrial = s_notrial.flatten()
-        return s_notrial[s_notrial >= 0.0]
-
     def get_s_adjusted(self, adjustment_type):
         if self.s_adjusted is None:
             raise RuntimeError("Adjusted performances are not pre-computed yet.")
@@ -454,10 +461,27 @@ class Subject:
         return mean_s
 
     def get_actual_s_adjusted_1d(self, adjustement_type):
-        """ Flattened array of all adjusted perfs, unsorted, not included trial or unvalid data. """
+        """ Flattened array of all adjusted perfs, unsorted, not including trial or unvalid data. """
         s_notrial = self.get_s_adjusted(adjustement_type)[self.global_params.synths_trial_count:, :]
         s_notrial = s_notrial.flatten()
         return s_notrial[s_notrial >= 0.0]
+
+    def get_all_s_dataframe(self, eval_type):
+        """ Returns a dataframe containing all valid perfs, for a given perf evaluation. Columns are:
+        subject_index, expertise_level, synth_id, search_type, performance """
+        # only non-trial synths (still might contain unvalid perfs)
+        s_notrial = self.get_s_adjusted(eval_type)[self.global_params.synths_trial_count:, :]
+        perfs_list = list()
+        for j in range(0, s_notrial.shape[0]):
+            for j2 in range(0, s_notrial.shape[1]):
+                # negative unvalid perfs might remain at this point
+                if s_notrial[j, j2] >= 0.0:
+                    perfs_list.append([self.index, self.expertise_level, j,
+                                      MethodType(j2).name.lower(), s_notrial[j, j2]])
+        return pd.DataFrame(perfs_list, columns=['subject_index', 'expertise_level', 'synth_id',
+                                                 'search_type', 'performance'])
+
+
 
     @ property
     def synths_count(self):
@@ -500,6 +524,6 @@ class MethodsOpinion:
             if method_name.lower() == "interpolation":
                 return MethodType.INTERP
             elif method_name.lower() == "fader":
-                return MethodType.FADER
+                return MethodType.SLIDERS
             else:
                 return MethodType.NONE
