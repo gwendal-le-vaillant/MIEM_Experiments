@@ -7,10 +7,10 @@ import experimentdatadisplay as edd
 import perfeval
 
 # ----- 0 - Data loading and pre-processing + Display of generic info -----
-expe4 = edp.load_experiment_once_a_day("./expe_data/", force_reload=False)
+expe4 = edp.load_experiment_once_a_day("./expe_data/", force_reload=True)
 print(expe4)
 expe4.precompute_adjusted_s()
-# edd.plot_age_and_sex(expe4)
+edd.plot_age_and_sex(expe4)
 
 # ----- 1 - Display of one subject performance (in interactive plot windows) -----
 subject_index = -1  # -1 to disable per-subject data visualization
@@ -43,9 +43,9 @@ perfs_analyzer = perfeval.Analyzer(expe4)
 edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.ADJUSTED, add_swarm_plot=True)
 # ----- ----- 3 d) MEAN perfs, sorted by method and expertise level
 # edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.INGAME)
-edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.ADJUSTED, show_fit_analysis=True)
-# edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_TIME)
-# edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_ERROR)
+edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.ADJUSTED, show_fit_analysis=False)
+edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_TIME)
+edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_ERROR)
 
 # ----- 4 - Others -----
 # edd.plot_opinions_on_methods(expe4)

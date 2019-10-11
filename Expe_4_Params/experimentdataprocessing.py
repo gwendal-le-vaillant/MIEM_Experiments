@@ -96,7 +96,11 @@ class Experiment:
             subject_info_et = xet.parse(self.get_subject_info_filename(i)).getroot()
             subject_data = np.genfromtxt(self.get_subject_data_filename(i), delimiter=";")
             self.all_subjects.append(Subject(subject_info_et, subject_data, self.global_params, self.synths))
-        self.subjects = [subject for subject in self.all_subjects if subject.is_valid]
+        # Outliers are decided here
+        # subject 0029 was disturbed by a noise heard in the headset during the whole experiment
+        self.all_subjects[29].is_outlier = True
+        self.subjects = [subject for subject in self.all_subjects if (subject.is_valid and not subject.is_outlier)]
+        """ Subjects contains all the valid, non-outlier subjects """
         for i in range(len(self.subjects)):
             self.subjects[i].set_index(i)
 
@@ -132,8 +136,11 @@ class Experiment:
         print("--------------------------------")
 
     def __str__(self):
-        return "Experiment: {} valid subjects on {} tested. {}"\
-            .format(len(self.subjects), len(self.all_subjects), self.global_params.__str__())
+        return "Experiment: {} valid subjects on {} tested ({} outlier). {}"\
+            .format(len(self.subjects),
+                    len([0 for subject in self.all_subjects if subject.is_valid]),
+                    len([0 for subject in self.all_subjects if subject.is_outlier]),
+                    self.global_params.__str__())
 
     def get_subject_data_filename(self, subject_index):
         return "{}Exp{:04d}_data.csv".format(self.path_to_data, subject_index)
@@ -282,11 +289,12 @@ class Subject:
     si l'expérience est complète, toutes les cases seront réellement utilisées
     """
     def __init__(self, info_et, raw_data, global_params, synths):
-        self.global_params = global_params # internal reference backup
-        self.index = -1 # to be defined after construction of all subjects
+        self.global_params = global_params  # internal reference backup
+        self.index = -1  # to be defined after construction of all subjects
         # - - - - - - - - Subject Info from XML file - - - - - - - -
         self.uid = int(info_et.attrib["UID"])
         self.is_valid = bool(strtobool(info_et.attrib["is_valid"]))
+        self.is_outlier = False  # subjects are not considered outliers by default
         first_questions_et = info_et.find("first_questions")
         final_questions_et = info_et.find("final_questions")
         self.remark = final_questions_et.find("remark").text
