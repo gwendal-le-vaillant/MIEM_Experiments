@@ -10,7 +10,7 @@ import perfeval
 expe4 = edp.load_experiment_once_a_day("./expe_data/", force_reload=True)
 print(expe4)
 expe4.precompute_adjusted_s()
-edd.plot_age_and_sex(expe4)
+#edd.plot_age_and_sex(expe4)
 
 # ----- 1 - Display of one subject performance (in interactive plot windows) -----
 subject_index = -1  # -1 to disable per-subject data visualization

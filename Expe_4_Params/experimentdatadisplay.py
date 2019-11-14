@@ -374,6 +374,7 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
 
     ax.set_ylim([0, 1])
     ax.set_xlim([min(expertise_levels)-0.5, max(expertise_levels)+0.5])
+    ax.set_xticks(range(min(expertise_levels), max(expertise_levels)+1))
 
     ax.legend(loc='best')
     ax.text(x=0.8, y=0.1, s='Perf. evaluation type: {}'.format(perf_eval_type.name.lower()),

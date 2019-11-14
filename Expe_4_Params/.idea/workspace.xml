@@ -5,6 +5,7 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/expe_data/A_OSC_Recorder_Experiment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/expe_data/A_OSC_Recorder_Experiment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/experiment4params.py" beforeDir="false" afterPath="$PROJECT_DIR$/experiment4params.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experimentdatadisplay.py" beforeDir="false" afterPath="$PROJECT_DIR$/experimentdatadisplay.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/experimentdataprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/experimentdataprocessing.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />

@@ -20,6 +20,11 @@ class MethodType(IntEnum):
     INTERP = 1  # interpolation between presets
 
 
+""" Global variable for regrouping the answered expertise levels 4 and 5 into a single group, 
+ because very few (1 at the moment...) subjects themselves to be a level 5 expert. """
+ADJUSTED_EXPERTISE_LEVELS = [1, 2, 3, 4, 4]
+
+
 def load_experiment_once_a_day(data_path, force_reload=False):
     """
     Optimized loading (XML/CSV files will be parsed and pickled only once a day)
@@ -43,7 +48,7 @@ def load_experiment_once_a_day(data_path, force_reload=False):
         except FileNotFoundError:
             print("No pickle file found -> loading fresh data from CSV and XML files")
             is_pickle_file_outdated = True
-        except Exception:
+        except Exception:  # If any other error happens... pickle file considered outdated
             print("Unknown exception: pickle data file seems corrupted. Reloading experiment.")
             is_pickle_file_outdated = True
 
@@ -319,7 +324,9 @@ class Subject:
             self.sex = SexType.FEMALE
         else:
             self.sex = SexType.NON_BINARY
-        self.expertise_level = int(final_questions_et.find("expertise_level").text)
+        self.expertise_level = int(final_questions_et.find("expertise_level").text)  # ranges from 1 to 5
+        self.expertise_level = ADJUSTED_EXPERTISE_LEVELS[self.expertise_level-1]
+        # TODO adjust expertise level
         self.methods_opinion = MethodsOpinion(final_questions_et.find("methods_opinion"))
         self.similar_interface = final_questions_et.find("similar_interface").text
         self.similar_experiment = final_questions_et.find("similar_expe").text
