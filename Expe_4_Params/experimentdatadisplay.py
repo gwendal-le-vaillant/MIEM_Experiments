@@ -14,11 +14,18 @@ import figurefiles
 import perfeval
 
 
+use_nime20_notations = True
+
+
 def plot_age_and_sex(expe):
+    all_ages = [subject.age for subject in expe.subjects]
     female_ages = [subject.age for subject in expe.subjects if subject.sex == edp.SexType.FEMALE]
     male_ages = [subject.age for subject in expe.subjects if subject.sex == edp.SexType.MALE]
     other_ages = [subject.age for subject in expe.subjects if subject.sex == edp.SexType.NON_BINARY]
+    print("Subjects: {} female, {} male, {} other, from {} to {} years old".
+          format(len(female_ages), len(male_ages), len(other_ages), min(all_ages), max(all_ages)))
 
+    # TODO display male/female as swarm plot (to show age duplicates)
     fig, ax = plt.subplots(1, 1)
     plt.scatter(female_ages, np.full(len(female_ages), edp.SexType.FEMALE))
     plt.scatter(male_ages, np.full(len(male_ages), edp.SexType.MALE))
@@ -223,28 +230,38 @@ def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display
     histogram_bins = np.linspace(0.0, 1.0, 20)
     kde_bw = 0.05
 
-    fig = plt.figure(figsize=(8, 6))
+    if use_nime20_notations:
+        fig = plt.figure(figsize=(4, 2.6))
+    else:
+        fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111)
 
     adjusted_s_2d = np.array(expe.get_all_actual_s_2d(perf_eval_type))
     distplot0 = sns.distplot(adjusted_s_2d[:, 0], bins=histogram_bins,
-                             kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Sliders method')
+                             kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Sliders')
     distplot1 = sns.distplot(adjusted_s_2d[:, 1], bins=histogram_bins,
-                             kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Interp. method')
-    ax.legend(loc='best')
+                             kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Interpolation')
     ax.set_xlim(0.0, 1.0)
-    ax.set(title="Performances of all subjects (eval. function = {})".format(perf_eval_type.name.lower()),
-           xlabel="Performance scores", ylabel="Normalized counts and estimated PDF")
+    if use_nime20_notations:
+        ax.legend(loc='best', bbox_to_anchor=(0.50, 0.7))
+        ax.set(xlabel="Performance scores", ylabel="Scaled counts, estimated PDF")
+        ax.set_ylim(0.0, 2.9)
+    else:
+        ax.legend(loc='best')
+        ax.set(title="Performances of all subjects (eval. function = {})".format(perf_eval_type.name.lower()),
+               xlabel="Performance scores", ylabel="Scaled counts and estimated PDF")
 
     # Komolgorov-Smirnov test using scipy stats. The null hypothesis is 'the 2 samples are drawn from
     # the same distribution'. Null hypothesis can be rejected is p-value is small.
     # Obvious results.... p-value is around 10^-19
+    # TODO test du KS sur chaque synthé séparément
     if display_KS:
         [ks_stat, p_value] = stats.ks_2samp(adjusted_s_2d[:, 0], adjusted_s_2d[:, 1], alternative='two-sided')
-        ax.text(x=0.1, y=0.1, s='KS-stat={}, p-value={}'.format(ks_stat, p_value),
+        ax.text(x=0.1, y=0.1, s='KS-stat={:.2f}, p-value={:.2f}'.format(ks_stat, p_value),
                 bbox=dict(boxstyle="round", fc="w"))
 
-    plt.tight_layout()
+    fig.tight_layout()
+    figurefiles.save_in_figures_folder(fig, "Perfs_histogram_eval{}.pdf".format(perf_eval_type.value))
 
 
 def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalType.ADJUSTED):
@@ -255,10 +272,14 @@ def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalT
 
     all_s = expe.get_all_valid_s(perf_eval_type)
 
-    fig = plt.figure(figsize=(9, 4))
+    fig = plt.figure(figsize=(9, 2))
     ax = fig.add_subplot(111)
-    ax.set(title="Performances ({}) $s_{{ij}}$ of all subjects $i$, per synth $j$".format(perf_eval_type.name.lower()),
-           xlabel="Synth ID $j$", ylabel="Performances $s_{ij}$")
+    if use_nime20_notations:
+        ax.set(title="",
+               xlabel="Synthesizer ID", ylabel="Performances")
+    else:
+        ax.set(title="Performances ({}) $s_{{ij}}$ of all subjects $i$, per synth $j$".format(perf_eval_type.name.lower()),
+               xlabel="Synth ID $j$", ylabel="Performances $s_{ij}$")
 
     # box plot of all S perfs data, with empty space after each synth
     synths_range = range(expe.global_params.synths_trial_count*2, expe.global_params.synths_count * 2)
@@ -279,43 +300,98 @@ def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalT
         synth_id = synth_index-expe.global_params.synths_trial_count
         if (i%2) == 0:
             box_color = 'C0'
-            x_ticks_labels.append('{} (sliders)'.format(synth_id))
+            if use_nime20_notations:
+                x_ticks_labels.append('{}-S'.format(synth_id))
+            else:
+                x_ticks_labels.append('{} (sliders)'.format(synth_id))
         else:  # separating line after each synth
             box_color = 'C1'
-            x_ticks_labels.append('{} (interp.)'.format(synth_id))
+            if use_nime20_notations:
+                x_ticks_labels.append('{}-I'.format(synth_id))
+            else:
+                x_ticks_labels.append('{} (interp.)'.format(synth_id))
 
         if plottype == 'box':
             # artist costomization from https://matplotlib.org/3.1.0/gallery/statistics/boxplot.html
-            median_props = dict(linestyle='-', linewidth=2.0, color='r')
-            mean_point_props = dict(marker='D', markeredgecolor='black', markerfacecolor='r', markersize=4)
-            bps.append(ax.boxplot(all_s[synth_index][i%2], positions=[cur_x_tick], sym='{}.'.format(box_color),
-                                  widths=[0.6], showmeans=True, medianprops=median_props, meanprops=mean_point_props))
+            median_props = dict(linestyle='-', linewidth=2.0, color='k')
+            # Means deleted for NIME20
+            # mean_point_props = dict(marker='D', markeredgecolor='black', markerfacecolor='r', markersize=4)
+            bps.append(ax.boxplot(all_s[synth_index][i % 2], positions=[cur_x_tick], sym='{}.'.format(box_color),
+                                  widths=[0.6], medianprops=median_props)) #, showmeans=True))
+                                  # meanprops=mean_point_props))
             plt.setp(bps[-1]['boxes'], color=box_color)
             plt.setp(bps[-1]['whiskers'], color=box_color)
             plt.setp(bps[-1]['fliers'], color=box_color)
 
         elif plottype == 'violin':
-            vls.append(ax.violinplot(all_s[synth_index][i%2], positions=[cur_x_tick]))
+            vls.append(ax.violinplot(all_s[synth_index][i % 2], positions=[cur_x_tick]))
 
         x_ticks.append(cur_x_tick)
         cur_x_tick += 1
 
-    if plottype == 'box':
-        ax.legend([bps[0]['boxes'][0], bps[1]['boxes'][0], bps[0]['medians'][0], bps[0]['means'][0]],
-                  ['Sliders method', 'Interp. method', 'medians', 'means $\\overline{s_j}$'],
-                  loc='center left', bbox_to_anchor=(1.0, 0.5))
-    elif plottype == 'violin':
-        pass  # not enough at the moment to really use a violin plot...
+    if not use_nime20_notations:  # legends disabled for nime20
+        if plottype == 'box':
+            ax.legend([bps[0]['boxes'][0], bps[1]['boxes'][0], bps[0]['medians'][0]], #bps[0]['means'][0]],
+                      ['Sliders method', 'Interp. method', 'medians'], #'means $\\overline{s_j}$'],
+                      loc='center left', bbox_to_anchor=(1.0, 0.5))
+        elif plottype == 'violin':
+            pass  # not enough at the moment to really use a violin plot...
 
     ax.set_ylim([0, 1])
     ax.set_xlim([0, cur_x_tick])
     ax.set_xticks(x_ticks)
-    ax.set_xticklabels(x_ticks_labels, rotation=90)
-    for tick in ax.xaxis.get_major_ticks():
-        tick.label.set_fontsize(8)
+    x_labels_fontsize = 10 if use_nime20_notations else 8
+    ax.set_xticklabels(x_ticks_labels, rotation=90, fontdict={'fontsize': x_labels_fontsize})
 
     fig.tight_layout()
-    figurefiles.save_in_figures_folder(fig, "Perfs_per_synth_{}-{}.pdf".format(plottype, perf_eval_type.value,
+    figurefiles.save_in_figures_folder(fig, "Perfs_per_synth_{}-{}.pdf".format(perf_eval_type.value,
+                                                                               perf_eval_type.name.lower()))
+
+
+def plot_all_perfs_histograms_by_synth(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display_tests=False):
+    all_s = expe.get_all_valid_s(perf_eval_type)
+    n_cols = 4
+    n_rows = math.ceil(float(expe.global_params.synths_count - expe.global_params.synths_trial_count) / n_cols)
+
+    fig = plt.figure(figsize=(13, 8))
+    for j in range(expe.global_params.synths_trial_count, expe.global_params.synths_count):
+        sliders_s = np.array(all_s[j][0])
+        interp_s = np.array(all_s[j][1])
+
+        synth_index = j - expe.global_params.synths_trial_count
+        col = synth_index % n_cols
+        row = math.floor(float(synth_index) / n_cols)
+
+        ax = fig.add_subplot(n_rows, n_cols, synth_index+1)
+        ax.set(title="Synth ID={}".format(synth_index),
+               xlabel="Performances", ylabel="Normalized count, estimated PDF")
+
+        sns.distplot(sliders_s, rug=True, hist=False)
+        sns.distplot(interp_s, rug=True, hist=False)
+
+        ax.set_xlim([0.0, 1.0])
+
+        if display_tests:
+            # - - - Normality tests - cancelled (not much power for small sample sizes) - - -
+            # normality_string = "Synth {} normality test p-values:  ".format(synth_index)
+            # is_normal = [False, False]
+            # for k in range(2):
+            #     # Null hypothesis: samples come from a normal distribution
+            #     # D'agostino and pearson (scipy stats default) always says yes... (small sample size)
+            #     # Shapiro-Wilk:
+            #     [stat_value, p_value] = stats.shapiro(all_s[j][k])
+            #     normality_string = normality_string + " {:.3f}".format(p_value)
+            #     is_normal[k] = (p_value > 0.10)  # 10% normality test...
+            #     normality_string = normality_string + ("(yes) " if is_normal[k] else "(no)  ")
+            # print(normality_string)
+            # - - - Mann-Whitney U test, non parametric, OK for small samples. - - -
+            # TODO U should be compared to U_critical
+            [u_stat, p_value] = stats.mannwhitneyu(sliders_s, interp_s, alternative="two-sided")
+            print("Synth {}: U-stat={:0.2f}, p-value={:0.4f}"
+                  .format(j - expe.global_params.synths_trial_count, u_stat, p_value))
+
+    fig.tight_layout()
+    figurefiles.save_in_figures_folder(fig, "Perfs_hist_per_synth_{}-{}.pdf".format(perf_eval_type.value,
                                                                                perf_eval_type.name.lower()))
 
 
@@ -343,7 +419,7 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     assert len(expe.subjects[0].mean_s_ingame) == 2, 'Works for 2 methods only (fader + interp)'
 
     # Degrees of polynomial regressions
-    faders_reg_degree = 1  # best is always 2 (in terms of R2 and RMSE)  # TODO vérifier si 1 ne suffit pas
+    faders_reg_degree = 2  # best seems to be 2 (in terms of R2 and RMSE)  # TODO vérifier si 1 ne suffit pas
     interp_reg_degree = 1  # TODO vérifier avec + de données si ordre 2 est nécessaire (1 peut être suffisant)
 
     expertise_levels = np.asarray([subject.expertise_level for subject in expe.subjects], dtype=int)
@@ -362,25 +438,34 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
             analyse_goodness_of_fit(expertise_levels, mean_s[i, :], reg_p[i], plot_name)
 
     # Seaborn fit graph (underlying functions: np.polyfit)
-    fig = plt.figure()
+    if use_nime20_notations:
+        fig = plt.figure(figsize=(5, 3.6))
+    else:
+        fig = plt.figure()
     ax = fig.add_subplot()
-    ax.set(title="Performances $\\overline{s_i}$ of subjects $i$, related to their expertise",
-           xlabel="Estimated expertise level", ylabel="Mean performance $\\overline{s_i}$")
+    if use_nime20_notations:
+        ax.set_xlabel("Estimated expertise level", fontdict={'fontsize': 12})
+        ax.set_ylabel("Average performances", fontdict={'fontsize': 12})
+    else:
+        ax.set(title="Performances $\\overline{s_i}$ of subjects $i$, related to their expertise",
+               xlabel="Estimated expertise level", ylabel="Mean performance $\\overline{s_i}$")
 
     regplot0 = sns.regplot(x=expertise_levels, y=mean_s[0, :], order=faders_reg_degree,
-                           label="Sliders method", marker='s')
+                           label="Sliders", marker='o')
     regplot1 = sns.regplot(x=expertise_levels, y=mean_s[1, :], order=interp_reg_degree,
-                           label="Interp method", marker='D')
+                           label="Interpolation", marker='+')
 
     ax.set_ylim([0, 1])
     ax.set_xlim([min(expertise_levels)-0.5, max(expertise_levels)+0.5])
     ax.set_xticks(range(min(expertise_levels), max(expertise_levels)+1))
+    ax.grid(axis='y')
 
     ax.legend(loc='best')
-    ax.text(x=0.8, y=0.1, s='Perf. evaluation type: {}'.format(perf_eval_type.name.lower()),
-            bbox=dict(boxstyle="round", fc="w"))
+    if not use_nime20_notations:
+        ax.text(x=0.8, y=0.1, s='Perf. evaluation type: {}'.format(perf_eval_type.name.lower()),
+                bbox=dict(boxstyle="round", fc="w"))
 
-    # fig.tight_layout()
+    fig.tight_layout()
     figurefiles.save_in_figures_folder(fig, "Perf_vs_expertise_eval{}.pdf".format(perf_eval_type))
 
 
@@ -431,14 +516,27 @@ def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
 
 def plot_opinions_on_methods(expe):
 
-    # We rely on a pre-computed pandas dataframe for this
-    ax = expe.opinions.plot.bar(rot=0)
-    ax.set(title='Answers to the questions: which method was the [...] ?',
-           ylabel='Amount of subjects', xlabel='Characteristic asked')
-    # legend needs more space
-    max_displayed_y = int(math.floor( expe.opinions.max().max() * 1.4 ))
+    if use_nime20_notations:
+        fig = plt.figure(figsize=(4.8, 2.5))
+    else:
+        fig = plt.figure()
+    ax = fig.add_subplot(111)
 
-    ax.legend(loc='best')
+    # We rely on a pre-computed pandas dataframe for this
+    expe.opinions.plot.bar(rot=0, ax=ax)
+    if use_nime20_notations:
+        ax.set(ylabel='Number of individuals', xlabel='Characteristic asked')
+    else:
+        ax.set(title='Answers to the questions: which method was the [...] ?',
+               ylabel='Amount of subjects', xlabel='Characteristic asked')
+    # legend needs more space
+    max_displayed_y = int(math.floor( expe.opinions.max().max() * 1.2))
+
+    if use_nime20_notations:
+        ax.legend(loc='upper center', bbox_to_anchor=(0.38, 1.02))
+    else:
+        ax.legend(loc='best')
     ax.set_ylim([0, max_displayed_y])
 
+    fig.tight_layout()
     figurefiles.save_in_figures_folder(plt.gcf(), "Opinions_on_methods.pdf")

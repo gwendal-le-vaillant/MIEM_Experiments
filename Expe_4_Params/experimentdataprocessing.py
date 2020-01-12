@@ -131,7 +131,7 @@ class Experiment:
                        len([0 for subject in self.subjects if subject.methods_opinion.most_precise == MethodType.NONE]),
                        len([0 for subject in self.subjects if subject.methods_opinion.most_intuitive == MethodType.NONE]),
                        len([0 for subject in self.subjects if subject.methods_opinion.preferred == MethodType.NONE])]
-        self.opinions = pd.DataFrame({'Faders': faders_counts,
+        self.opinions = pd.DataFrame({'Sliders': faders_counts,
                                       'Interpolation': interp_counts,
                                       'None': none_counts},
                                      index=['fastest', 'most precise', 'most intuitive', 'preferred'])

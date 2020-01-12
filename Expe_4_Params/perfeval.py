@@ -111,8 +111,8 @@ class Analyzer:
         self.e_values = np.linspace(0.0, self.max_displayed_e, self.mesh_resolution)
         self.t_values = np.linspace(0.0, self.allowed_time, self.mesh_resolution)  # t is the research total duration
         self.e_grid, self.t_grid = np.meshgrid(self.e_values, self.t_values)
-        self.elevation_angle = 20.0
-        self.azimuth_angle = 30.0
+        self.elevation_angle = 25.0
+        self.azimuth_angle = 45.0
 
         self.histogram_bins = np.linspace(0.0, 1.0, 25)
         self.kde_bw = 0.05  # Band Width of Gaussian Kernel Density Estimators
@@ -147,7 +147,26 @@ class Analyzer:
 
         plt.tight_layout()
         fig.subplots_adjust(left=0.05)
-        figurefiles.save_in_figures_folder(fig, "Perf_adjusted_comparison_{}_{}_{}.pdf".format(adj_types[0], adj_types[1], adj_types[2]))
+        figurefiles.save_in_figures_folder(fig, "Perf_adjusted_comparison_{}_{}_{}.pdf"
+                                           .format(adj_types[0], adj_types[1], adj_types[2]))
+
+    def plot_adjusted_perf_only(self):
+        """ Evaluation function display for Nime20 paper """
+        fig = plt.figure(figsize=(5, 2.5))
+        ax_adj = fig.add_subplot(111, projection='3d')
+        surf = ax_adj.plot_surface(self.e_grid, self.t_grid, adjusted_eval(self.e_grid, self.t_grid,
+                                                                           self.allowed_time,
+                                                                           adjustment_type=EvalType.ADJUSTED),
+                                   linewidth=0, cmap=cm.plasma)
+        self._configure_perf_surface_axes(ax_adj)  # many configs will be overriden just after
+        ax_adj.set(xlabel='$e$, normalized sum of errors')
+        ax_adj.set(ylabel='$d$, research duration [s]', zlabel=r'$s$, performance')
+        ax_adj.set_xlim(0.0, 0.8)
+        ax_adj.set_xticks(np.linspace(0.0, 0.8, 5))
+        fig.colorbar(surf, aspect=18, pad=0.1)
+        plt.tight_layout()
+        fig.subplots_adjust(left=0.07, bottom=0.115, right=1.04)
+        figurefiles.save_in_figures_folder(fig, "Perf_eval_adjusted.pdf")
 
     def _configure_perf_surface_axes(self, ax):
         ax.set_xlim(0.0, self.max_displayed_e)
