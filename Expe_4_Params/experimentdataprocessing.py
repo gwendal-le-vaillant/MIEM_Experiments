@@ -177,7 +177,7 @@ class Experiment:
             for j in range(self.global_params.synths_count):
                 for j2 in range(self.global_params.search_types_count):
                     if subject_s_adj[j, j2] >= 0.0:  # only valid recorded performances are considered
-                        all_s[j][j2] += [subject_s_adj[j, j2]]
+                        all_s[j][j2] += [subject_s_adj[j, j2]]  # list append
         return all_s
 
     def get_all_valid_s(self, perf_eval_type=perfeval.EvalType.ADJUSTED):

@@ -364,7 +364,7 @@ def plot_all_perfs_histograms_by_synth(expe, perf_eval_type=perfeval.EvalType.AD
 
         ax = fig.add_subplot(n_rows, n_cols, synth_index+1)
         ax.set(title="Synth ID={}".format(synth_index),
-               xlabel="Performances", ylabel="Normalized count, estimated PDF")
+               xlabel="Performance score", ylabel="Observations, estimated PDF")
 
         sns.distplot(sliders_s, rug=True, hist=False)
         sns.distplot(interp_s, rug=True, hist=False)
@@ -373,22 +373,27 @@ def plot_all_perfs_histograms_by_synth(expe, perf_eval_type=perfeval.EvalType.AD
 
         if display_tests:
             # - - - Normality tests - cancelled (not much power for small sample sizes) - - -
-            # normality_string = "Synth {} normality test p-values:  ".format(synth_index)
-            # is_normal = [False, False]
-            # for k in range(2):
-            #     # Null hypothesis: samples come from a normal distribution
-            #     # D'agostino and pearson (scipy stats default) always says yes... (small sample size)
-            #     # Shapiro-Wilk:
-            #     [stat_value, p_value] = stats.shapiro(all_s[j][k])
-            #     normality_string = normality_string + " {:.3f}".format(p_value)
-            #     is_normal[k] = (p_value > 0.10)  # 10% normality test...
-            #     normality_string = normality_string + ("(yes) " if is_normal[k] else "(no)  ")
-            # print(normality_string)
-            # - - - Mann-Whitney U test, non parametric, OK for small samples. - - -
-            # TODO U should be compared to U_critical
-            [u_stat, p_value] = stats.mannwhitneyu(sliders_s, interp_s, alternative="two-sided")
-            print("Synth {}: U-stat={:0.2f}, p-value={:0.4f}"
-                  .format(j - expe.global_params.synths_trial_count, u_stat, p_value))
+            test_normality = False
+            if test_normality:
+                normality_string = "Synth {} normality test p-values:  ".format(synth_index)
+                is_normal = [False, False]
+                for k in range(2):
+                    # Null hypothesis: samples come from a normal distribution
+                    # D'agostino and pearson (scipy stats default) always says yes... (small sample size)
+                    # Shapiro-Wilk:
+                    [stat_value, p_value] = stats.shapiro(all_s[j][k])
+                    normality_string = normality_string + " {:.3f}".format(p_value)
+                    is_normal[k] = (p_value > 0.05)  # 5% normality test... MIGHT be normal if p_value > 0.05 (not sure)
+                    normality_string = normality_string + ("(yes) " if is_normal[k] else "(no)  ")
+                print(normality_string)
+            # - - - Wilcoxon signed-rank test, non-parameters, for related pair samples - - -
+            # (replaces Mann-Whitney U test, non parametric, OK for small samples)
+            print("Synth {}:".format(j - expe.global_params.synths_trial_count))
+            [w_stat, p_value] = stats.wilcoxon(x=sliders_s, y=interp_s)  # implementation requires n>20
+            print("    Wilcoxon signed-rank test: stat={:0.2f}, p-value={:0.4f}".format(w_stat, p_value))
+            # U should be compared to U_critical
+            #[u_stat, u_p_value] = stats.mannwhitneyu(sliders_s, interp_s, alternative="two-sided")
+            #print("    (M-W U: U-stat={:0.2f}, p-value={:0.4f})".format(u_stat, u_p_value))
 
     fig.tight_layout()
     figurefiles.save_in_figures_folder(fig, "Perfs_hist_per_synth_{}-{}.pdf".format(perf_eval_type.value,

@@ -37,7 +37,7 @@ edd.all_perfs_histogram(expe4, display_KS=False)  # default: adjusted perf eval
 # ----- ----- 3 b) Sorted by method and by synth ID
 # edd.plot_all_perfs_per_synth(expe4, perf_eval_type=perfeval.EvalType.INGAME)
 edd.plot_all_perfs_per_synth(expe4)
-# edd.plot_all_perfs_histograms_by_synth(expe4, display_tests=True)
+edd.plot_all_perfs_histograms_by_synth(expe4, display_tests=True)
 # ----- ----- 3 c) Sorted by method and expertise level
 # edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.INGAME)
 # edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.FOCUS_ON_TIME)
@@ -50,7 +50,7 @@ edd.plot_all_perfs_per_synth(expe4)
 # edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_ERROR)
 
 # ----- 4 - Others -----
-edd.plot_opinions_on_methods(expe4)
+# edd.plot_opinions_on_methods(expe4)
 
 # ----- 5 - Show all previously built figures -----
 plt.show()
