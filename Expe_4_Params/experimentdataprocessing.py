@@ -1,8 +1,7 @@
 
 import time
 import pickle
-# xet = Xml Element Tree. In the code : _et suffix means Element Tree
-import xml.etree.ElementTree as xet
+import xml.etree.ElementTree as xet  # xet = Xml Element Tree. In code : _et suffix means Element Tree
 from distutils.util import strtobool
 from enum import IntEnum
 
@@ -18,11 +17,6 @@ class MethodType(IntEnum):
     NONE = -1
     SLIDERS = 0   # independant control of independant parameters
     INTERP = 1  # interpolation between presets
-
-
-""" Global variable for regrouping the answered expertise levels 4 and 5 into a single group, 
- because very few (1 at the moment...) subjects themselves to be a level 5 expert. """
-ADJUSTED_EXPERTISE_LEVELS = [1, 2, 3, 4, 4]
 
 
 def load_experiment_once_a_day(data_path, force_reload=False):
@@ -65,11 +59,11 @@ class Experiment:
     Contains all results for all subjects of an experiment
      e.g. the "4 parameters experiments" can be fully stored inside this class
 
-    4,5 dimensions pour l'expérience :
-    1° i = Index du sujet d'expérience
-    2° j = Numéro de synthé [de 0 à 11, y compris les essais, au lieu de -2 à 9]
-       2,5° jbis = synthé via fader (indice 0) ou via interpolation (indice 1)
-    3° k = Numéro de paramètre
+    4,5 dimensions for this experiment:
+    1° i = subject index
+    2° j = Synth index [from 0 to 11 including trials] [previously: was from -2 to 9]
+       2,5° jbis = synth played from sliders (index 0) or via interpolation (index 1)
+    3° k = Parameter index
     4° Time / recorded parameter values, variable height (2-column matrix)
 
     allowed_time is in seconds
@@ -101,8 +95,11 @@ class Experiment:
             subject_info_et = xet.parse(self.get_subject_info_filename(i)).getroot()
             subject_data = np.genfromtxt(self.get_subject_data_filename(i), delimiter=";")
             self.all_subjects.append(Subject(subject_info_et, subject_data, self.global_params, self.synths))
-        # Outliers are decided here
-        # subject 0029 was disturbed by a noise heard in the headset during the whole experiment
+        # - - - - - OUTLIERS are decided here - - - - -
+        # Remarks:
+        # - subjects 0000, 0001 and 0002 participated in the last beta configuration of the experiment, which is
+        # *exactly* the same as the final 4-parameter experiment -> not removed
+        # - subject 0029 was disturbed by a noise heard in the headset during the whole experiment -> removed
         self.all_subjects[29].is_outlier = True
         self.subjects = [subject for subject in self.all_subjects if (subject.is_valid and not subject.is_outlier)]
         """ Subjects contains all the valid, non-outlier subjects """
@@ -111,13 +108,13 @@ class Experiment:
 
         # Construction of a dataframe for opinions
         self.opinions_per_synth = pd.DataFrame({'fastest': [subject.methods_opinion.fastest
-                                                              for subject in self.subjects],
-                                                  'most precise': [subject.methods_opinion.most_precise
+                                                            for subject in self.subjects],
+                                                'most precise': [subject.methods_opinion.most_precise
+                                                                 for subject in self.subjects],
+                                                'most intuitive': [subject.methods_opinion.most_intuitive
                                                                    for subject in self.subjects],
-                                                  'most intuitive': [subject.methods_opinion.most_intuitive
-                                                                     for subject in self.subjects],
-                                                  'preferred': [subject.methods_opinion.preferred
-                                                                for subject in self.subjects]})
+                                                'preferred': [subject.methods_opinion.preferred
+                                                              for subject in self.subjects]})
         # dataframe to be displayed directly in a bar plot - index will be the absissa
         faders_counts = [len([0 for subject in self.subjects if subject.methods_opinion.fastest == MethodType.SLIDERS]),
                          len([0 for subject in self.subjects if subject.methods_opinion.most_precise == MethodType.SLIDERS]),
@@ -288,10 +285,10 @@ class Subject:
     """
     Class for storing and processing all experiment data of a given subject
 
-    On prévoit le stockage pour les experiences de tous les
-    synthés, avec ou sans faders.
-    Pour les presets de test la moitié de l'espace sera utilisé ; pour les autres,
-    si l'expérience est complète, toutes les cases seront réellement utilisées
+    Some storage space is reserved for all synths results, with sliders or interp.
+    But for trial synths, one half of this space will be actually used.
+    For the others, if the experiment is full (all cycles are valid, no technical issue encountered),
+    all reserved space will be used.
     """
     def __init__(self, info_et, raw_data, global_params, synths):
         self.global_params = global_params  # internal reference backup
@@ -325,8 +322,14 @@ class Subject:
         else:
             self.sex = SexType.NON_BINARY
         self.expertise_level = int(final_questions_et.find("expertise_level").text)  # ranges from 1 to 5
-        self.expertise_level = ADJUSTED_EXPERTISE_LEVELS[self.expertise_level-1]
-        # TODO adjust expertise level
+
+        # - - - - - Adjusted expertise levels - - - - -
+        # For regrouping the answered expertise levels 4 and 5 into a single group,
+        # because subjects are too modest (we know their actual skills after discussions - there were actual experts).
+        # Maybe the true level-5 experts sait they are level-4 after they had bad performance scores... And
+        # everyone had some (very) bad scores at some point during the experiment. """
+        adjusted_expertise_levels = [1, 2, 3, 4, 4]
+        self.expertise_level = adjusted_expertise_levels[self.expertise_level-1]
         self.methods_opinion = MethodsOpinion(final_questions_et.find("methods_opinion"))
         self.similar_interface = final_questions_et.find("similar_interface").text
         self.similar_experiment = final_questions_et.find("similar_expe").text
@@ -523,22 +526,22 @@ class Subject:
 
 
 class MethodsOpinion:
-        """
-        Stores the final opinion on control methods from the XML node. See MethodType for the base enum type
-        """
-        def __init__(self, opinion_et):
-            # COULD BE OPTIMIZED USING PANDAS
-            self.fastest = self._convert_string_to_type(opinion_et.attrib["fastest"])
-            self.most_precise = self._convert_string_to_type(opinion_et.attrib["most_precise"])
-            self.most_intuitive = self._convert_string_to_type(opinion_et.attrib["most_intuitive"])
-            self.preferred = self._convert_string_to_type(opinion_et.attrib["preferred"])
-            pass
+    """
+    Stores the final opinion on control methods from the XML node. See MethodType for the base enum type
+    """
+    def __init__(self, opinion_et):
+        # COULD BE OPTIMIZED USING PANDAS
+        self.fastest = self._convert_string_to_type(opinion_et.attrib["fastest"])
+        self.most_precise = self._convert_string_to_type(opinion_et.attrib["most_precise"])
+        self.most_intuitive = self._convert_string_to_type(opinion_et.attrib["most_intuitive"])
+        self.preferred = self._convert_string_to_type(opinion_et.attrib["preferred"])
+        pass
 
-        @staticmethod
-        def _convert_string_to_type(method_name):
-            if method_name.lower() == "interpolation":
-                return MethodType.INTERP
-            elif method_name.lower() == "fader":
-                return MethodType.SLIDERS
-            else:
-                return MethodType.NONE
+    @staticmethod
+    def _convert_string_to_type(method_name):
+        if method_name.lower() == "interpolation":
+            return MethodType.INTERP
+        elif method_name.lower() == "fader":
+            return MethodType.SLIDERS
+        else:
+            return MethodType.NONE

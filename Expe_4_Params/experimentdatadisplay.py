@@ -14,7 +14,9 @@ import figurefiles
 import perfeval
 
 
-use_nime20_notations = True
+# Optimized (smaller) graphs, shortened titles and legends, etc.
+# For figures to fit in a 6-page article
+use_nime20_notations = False
 
 
 def plot_age_and_sex(expe):
@@ -227,6 +229,7 @@ def all_perfs_violinplots(expe, perf_eval_type=perfeval.EvalType.ADJUSTED):
 def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display_KS=False):
     """ Shows all performances sorted in 2 groups (sliders and interp.), and displays
     the p-value of the Kolmogorov-Smirnov test """
+    # TODO change the KS-test which might not be the more adapted (-> switch to rank test with ordered values)
     histogram_bins = np.linspace(0.0, 1.0, 20)
     kde_bw = 0.05
 
@@ -254,7 +257,7 @@ def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display
     # Komolgorov-Smirnov test using scipy stats. The null hypothesis is 'the 2 samples are drawn from
     # the same distribution'. Null hypothesis can be rejected is p-value is small.
     # Obvious results.... p-value is around 10^-19
-    # TODO test du KS sur chaque synthé séparément
+    # TODO changed to a signed-rank test (but values ordering msut be ensured)
     if display_KS:
         [ks_stat, p_value] = stats.ks_2samp(adjusted_s_2d[:, 0], adjusted_s_2d[:, 1], alternative='two-sided')
         ax.text(x=0.1, y=0.1, s='KS-stat={:.2f}, p-value={:.2f}'.format(ks_stat, p_value),
@@ -272,7 +275,10 @@ def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalT
 
     all_s = expe.get_all_valid_s(perf_eval_type)
 
-    fig = plt.figure(figsize=(9, 2))
+    if use_nime20_notations:
+        fig = plt.figure(figsize=(9, 2))
+    else:
+        fig = plt.figure(figsize=(9, 5))
     ax = fig.add_subplot(111)
     if use_nime20_notations:
         ax.set(title="",
@@ -424,8 +430,8 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     assert len(expe.subjects[0].mean_s_ingame) == 2, 'Works for 2 methods only (fader + interp)'
 
     # Degrees of polynomial regressions
-    faders_reg_degree = 2  # best seems to be 2 (in terms of R2 and RMSE)  # TODO vérifier si 1 ne suffit pas
-    interp_reg_degree = 1  # TODO vérifier avec + de données si ordre 2 est nécessaire (1 peut être suffisant)
+    faders_reg_degree = 2  # best seems to be 2 (in terms of R2 and RMSE)  # TODO re-check if 1 is enough
+    interp_reg_degree = 1  # TODO re-check if 2 would fit better (with more data)
 
     expertise_levels = np.asarray([subject.expertise_level for subject in expe.subjects], dtype=int)
     # vstack of row arrays

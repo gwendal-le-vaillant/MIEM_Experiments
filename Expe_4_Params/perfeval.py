@@ -14,10 +14,10 @@ import figurefiles
 
 
 class EvalType(IntEnum):
-    INGAME = 0  # the in-game implemented score function
+    INGAME = 0  # the in-game implemented score function (scores display for gamification feedback)
     SUM_BASED = 1
     ADJUSTED_NORM2 = 2
-    ADJUSTED = 3
+    ADJUSTED = 3  # Very close to the in-game, but simpler and gives a zero score to possible random answers.
     FOCUS_ON_TIME = 4
     FOCUS_ON_ERROR = 5
     COUNT = 6
@@ -44,29 +44,41 @@ def adjusted_eval(e, t, allowed_time, adjustment_type=EvalType.ADJUSTED):
     if adjustment_type == EvalType.INGAME:
         return expe4_ingame_eval(e, t, allowed_time)
 
+    # Too
     elif adjustment_type == EvalType.SUM_BASED:
         precision_term = 1.0 - 2.0 * e  # null or negative if total error > 0.5
         time_term = 1.0 - t / allowed_time  # always positive, and is at least 1/3
         final_score = 0.6 * precision_term + 0.4 * time_term
         return np.clip(final_score, 0.0, 1.0)
 
+    # not used anymore....
     elif adjustment_type == EvalType.ADJUSTED_NORM2:
+        return adjusted_eval(e, t, allowed_time, adjustment_type=EvalType.ADJUSTED)
+
+    # - - - ADJUSTED PERFORMANCE EVALUATION - - -
+    # This function is not exactly the same as the in-game perf eval function, but it does not change
+    # the significance of results. Synths 3 to 8 gives clearly better results the interp, and synth 0, 1, 2
+    # and 9 still give similar results for both interp/sliders method.
+    # It does not change the polynomial fits of perf vs. expertise data.
+    # ---> Advantages/disadvantages (compared to in-game perf eval function):
+    # + removes possible random answers (more strict about huge errors)
+    # + centers the overall average performance around 0.5
+    # + very simple formula
+    # - is not exactly the perf displayed during the gamified experiment
+    elif adjustment_type == EvalType.ADJUSTED:
         max_e = 0.55  # 0.5 in norm-1 is already a quite large error...
         max_t = 2.5 * allowed_time
         final_score = (1.0 - e / max_e) * (1.0 - t / max_t)
         return np.clip(final_score, 0.0, 1.0)
 
-    elif adjustment_type == EvalType.ADJUSTED:
-        return adjusted_eval(e, t, allowed_time, adjustment_type=2)
-
-    # Bigger importance for the time perf
+    # Bigger importance for the time perf. Gives the same overall average performance than the ADJUSTED.
     elif adjustment_type == EvalType.FOCUS_ON_TIME:
         max_e = 0.70
         max_t = 1.7 * allowed_time
         final_score = (1.0 - e / max_e) * (1.0 - t / max_t)
         return np.clip(final_score, 0.0, 1.0)
 
-    # Bigger importance for the precision perf
+    # Bigger importance for the precisio perf. Gives the same overall average performance than the ADJUSTED.
     elif adjustment_type == EvalType.FOCUS_ON_ERROR:
         max_e = 0.5
         max_t = 4.0 * allowed_time
@@ -80,7 +92,9 @@ def adjusted_eval(e, t, allowed_time, adjustment_type=EvalType.ADJUSTED):
 def expe4_ingame_eval(e, t, allowed_time):
     """ Score function used for real-time performance evaluation during the
     '4 parameters' MIEM experiment. Defined from early observations of alpha and beta experiments.
-    e is the norm-1 parametric error, t is the total research duration. """
+    e is the norm-1 parametric error, t is the total research duration.
+
+    Note: the ADJUSTED performance must give very similar results. """
 
     # At first, we consider that the score is based on 2 independant performances: research time and final precision
     precision_term = 1.0 - 2.0*e  # null or negative if norm-1 error > 0.5
