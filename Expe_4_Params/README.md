@@ -1,5 +1,5 @@
 # Data
-The raw recorded CSV files are located in the ./expe_data folder.
+The raw recorded XML and CSV files are located in the ./expe_data folder.
 
 # Dependencies
 To run this project, the easiest way is to create a python 3.7 virtual environment using conda (or anaconda navigator). The virtual environment must contain recent versions of matplotlib, numpy, pandas, scipy and seaborn. (Tested in January 2020).
@@ -7,8 +7,8 @@ To run this project, the easiest way is to create a python 3.7 virtual environme
 Using conda from the command line:
 
 ```
-conda create --name conda_tests python=3.7
-conda activate conda_tests
+conda create --name my_virtual_env python=3.7
+conda activate my_virtual_env
 conda install matplotlib numpy pandas scipy seaborn
 ```
 
@@ -21,3 +21,7 @@ To run the data processing and display, please run the experiment4params.py scri
 cd PATH_TO_THIS_DIRECTORY
 python3 ./experiment4params.py
 ```
+
+To have access to more graphs, uncomment lines in the main script: experiment4params.py
+
+Further details are given in other .py source files.

@@ -91,7 +91,7 @@ def adjusted_eval(e, t, allowed_time, adjustment_type=EvalType.ADJUSTED):
 
 def expe4_ingame_eval(e, t, allowed_time):
     """ Score function used for real-time performance evaluation during the
-    '4 parameters' MIEM experiment. Defined from early observations of alpha and beta experiments.
+    '4 parameters' experiment. Defined from early observations of alpha and beta experiments.
     e is the norm-1 parametric error, t is the total research duration.
 
     Note: the ADJUSTED performance must give very similar results. """
