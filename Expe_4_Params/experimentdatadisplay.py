@@ -72,26 +72,26 @@ class SubjectPerformancesVisualizer:
         self.update_plot(subject)
 
     def update_plot(self, subject):
-        plt.suptitle("Durations $d_{ij}$, errors $e_{ij}$ and performances $s_{ij}$ for subject $i={}$"
+        plt.suptitle("Durations $d$, errors $e$ and performances $s$ for subject #"
                      + str(subject.index))
 
         synths_ids = self.expe.global_params.get_synths_ids()
 
         self.axes[0].clear()
-        self.axes[0].set(ylabel="Research duration $d_{ij}$")
+        self.axes[0].set(ylabel="Search duration $d$")
         self.axes[0].scatter(synths_ids, subject.d[:, 0], marker='s')
         self.axes[0].scatter(synths_ids, subject.d[:, 1], marker='D')
         self.axes[0].set_ylim([0, subject.global_params.allowed_time])  # hides the -1 unvalid values
 
         self.axes[1].clear()
-        self.axes[1].set(ylabel="Norm-1 error $e_{ij}$")
+        self.axes[1].set(ylabel="Normalized error $e$")
         self.axes[1].scatter(synths_ids, subject.e_norm1[:, 0], marker='s')
         self.axes[1].scatter(synths_ids, subject.e_norm1[:, 1], marker='D')
         self.axes[1].set_ylim([0, 1])  # hides the -1 unvalid values
-        self.axes[1].legend(['Faders', 'Interp'], loc="best")
+        self.axes[1].legend(['Sliders', 'Interp.'], loc="best")
 
         self.axes[2].clear()
-        self.axes[2].set(ylabel="In-game displayed perf.")
+        self.axes[2].set(ylabel="Score {}".format(perfeval.get_perf_eval_name(perfeval.EvalType.INGAME)))
         self.axes[2].scatter(synths_ids, subject.s_ingame[:, 0], marker='s')
         self.axes[2].scatter(synths_ids, subject.s_ingame[:, 1], marker='D')
         self.axes[2].set_ylim([0, 1])  # hides the -1 unvalid values
@@ -100,7 +100,8 @@ class SubjectPerformancesVisualizer:
 
         self.axes[3].clear()
         s_adj = subject.get_s_adjusted(adjustment_type=perfeval.EvalType.ADJUSTED)  # default best adjustment type
-        self.axes[3].set(ylabel="Adjusted perf. $s_{ij}$", xlabel="Synth ID $j$")
+        self.axes[3].set(ylabel="Score {}".format(perfeval.get_perf_eval_name(perfeval.EvalType.ADJUSTED)),
+                         xlabel="Synth ID")
         self.axes[3].scatter(synths_ids, s_adj[:, 0], marker='s')
         self.axes[3].scatter(synths_ids, s_adj[:, 1], marker='D')
         self.axes[3].set_ylim([0, 1])  # hides the -1 unvalid values
@@ -122,7 +123,7 @@ class SubjectCurvesVisualizer:
         self.rows_count = 4
         self.cols_count = 6
         self.fig, self.axes = plt.subplots(nrows=self.rows_count, ncols=self.cols_count, sharex=True, sharey=True,
-                                           figsize=(14, 8))
+                                           figsize=(9, 8))
 
         # global x and y labels, and limits
         self.fig.text(0.5, 0.04, 'Time [s]', ha='center', fontsize='12')
@@ -152,7 +153,7 @@ class SubjectCurvesVisualizer:
     def update_plot(self, subject):
         synths = self.expe.synths
 
-        self.fig.suptitle("Recorded data for subject $i={}$".format(subject.index))
+        self.fig.suptitle("Recorded data for subject #{}".format(subject.index))
 
         # actual plots of data
         for j in range(subject.tested_cycles_count):
@@ -236,7 +237,7 @@ def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display
     if use_nime20_notations:
         fig = plt.figure(figsize=(4, 2.6))
     else:
-        fig = plt.figure(figsize=(8, 6))
+        fig = plt.figure(figsize=(7, 3))
     ax = fig.add_subplot(111)
 
     adjusted_s_2d = np.array(expe.get_all_actual_s_2d(perf_eval_type))
@@ -251,8 +252,8 @@ def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display
         ax.set_ylim(0.0, 2.9)
     else:
         ax.legend(loc='best')
-        ax.set(title="Performances of all subjects (eval. function = {})".format(perf_eval_type.name.lower()),
-               xlabel="Performance scores", ylabel="Scaled counts and estimated PDF")
+        ax.set(title="Performances of all subjects (eval. function {})".format(perfeval.get_perf_eval_name(perf_eval_type)),
+               xlabel=r"Performance score $s$", ylabel="Scaled counts and estimated PDF")
 
     # Komolgorov-Smirnov test using scipy stats. The null hypothesis is 'the 2 samples are drawn from
     # the same distribution'. Null hypothesis can be rejected is p-value is small.
@@ -278,14 +279,15 @@ def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalT
     if use_nime20_notations:
         fig = plt.figure(figsize=(9, 2))
     else:
-        fig = plt.figure(figsize=(9, 5))
+        fig = plt.figure(figsize=(7, 3))
     ax = fig.add_subplot(111)
     if use_nime20_notations:
         ax.set(title="",
                xlabel="Synthesizer ID", ylabel="Performances")
     else:
-        ax.set(title="Performances ({}) $s_{{ij}}$ of all subjects $i$, per synth $j$".format(perf_eval_type.name.lower()),
-               xlabel="Synth ID $j$", ylabel="Performances $s_{ij}$")
+        ax.set(title="Performances of all subjects, per synth (eval. function {})"
+               .format(perfeval.get_perf_eval_name(perf_eval_type)),
+               xlabel="Synth ID ", ylabel="Performance $s$")
 
     # box plot of all S perfs data, with empty space after each synth
     synths_range = range(expe.global_params.synths_trial_count*2, expe.global_params.synths_count * 2)
@@ -335,7 +337,7 @@ def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalT
         x_ticks.append(cur_x_tick)
         cur_x_tick += 1
 
-    if not use_nime20_notations:  # legends disabled for nime20
+    if not use_nime20_notations and False:  # legends disabled for nime20 (and now: always disabled)
         if plottype == 'box':
             ax.legend([bps[0]['boxes'][0], bps[1]['boxes'][0], bps[0]['medians'][0]], #bps[0]['means'][0]],
                       ['Sliders method', 'Interp. method', 'medians'], #'means $\\overline{s_j}$'],
@@ -379,7 +381,7 @@ def plot_all_perfs_histograms_by_synth(expe, perf_eval_type=perfeval.EvalType.AD
 
         if display_tests:
             # - - - Normality tests - cancelled (not much power for small sample sizes) - - -
-            test_normality = False
+            test_normality = True
             if test_normality:
                 normality_string = "Synth {} normality test p-values:  ".format(synth_index)
                 is_normal = [False, False]
@@ -452,14 +454,14 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     if use_nime20_notations:
         fig = plt.figure(figsize=(5, 3.6))
     else:
-        fig = plt.figure()
+        fig = plt.figure(figsize=(6, 4))
     ax = fig.add_subplot()
     if use_nime20_notations:
         ax.set_xlabel("Estimated expertise level", fontdict={'fontsize': 12})
         ax.set_ylabel("Average performances", fontdict={'fontsize': 12})
     else:
-        ax.set(title="Performances $\\overline{s_i}$ of subjects $i$, related to their expertise",
-               xlabel="Estimated expertise level", ylabel="Mean performance $\\overline{s_i}$")
+        ax.set(title="Average performance of subjects, related to their expertise",
+               xlabel="Estimated expertise level", ylabel="Average performance $s$")
 
     regplot0 = sns.regplot(x=expertise_levels, y=mean_s[0, :], order=faders_reg_degree,
                            label="Sliders", marker='o')
@@ -473,7 +475,7 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
 
     ax.legend(loc='best')
     if not use_nime20_notations:
-        ax.text(x=0.8, y=0.1, s='Perf. evaluation type: {}'.format(perf_eval_type.name.lower()),
+        ax.text(x=0.8, y=0.1, s='Perf. eval. function: {}'.format(perfeval.get_perf_eval_name(perf_eval_type)),
                 bbox=dict(boxstyle="round", fc="w"))
 
     fig.tight_layout()
@@ -530,7 +532,7 @@ def plot_opinions_on_methods(expe):
     if use_nime20_notations:
         fig = plt.figure(figsize=(4.8, 2.5))
     else:
-        fig = plt.figure()
+        fig = plt.figure(figsize=(7, 3))
     ax = fig.add_subplot(111)
 
     # We rely on a pre-computed pandas dataframe for this
@@ -538,7 +540,7 @@ def plot_opinions_on_methods(expe):
     if use_nime20_notations:
         ax.set(ylabel='Number of individuals', xlabel='Characteristic asked')
     else:
-        ax.set(title='Answers to the questions: which method was the [...] ?',
+        ax.set(title='Answers to the questions: which method was the [...]?',
                ylabel='Amount of subjects', xlabel='Characteristic asked')
     # legend needs more space
     max_displayed_y = int(math.floor( expe.opinions.max().max() * 1.2))
@@ -546,7 +548,7 @@ def plot_opinions_on_methods(expe):
     if use_nime20_notations:
         ax.legend(loc='upper center', bbox_to_anchor=(0.38, 1.02))
     else:
-        ax.legend(loc='best')
+        ax.legend(loc='upper center', bbox_to_anchor=(0.38, 1.00))
     ax.set_ylim([0, max_displayed_y])
 
     fig.tight_layout()

@@ -20,17 +20,29 @@ class EvalType(IntEnum):
     ADJUSTED = 3  # Very close to the in-game, but simpler and gives a zero score to possible random answers.
     FOCUS_ON_TIME = 4
     FOCUS_ON_ERROR = 5
-    COUNT = 6
+    ALPHA_EXPE = 6  # First score, quickly removed (not displayed to alpha testers)
+    COUNT = 7
+
+
+def get_perf_eval_name(adjustment_type):
+    if adjustment_type == EvalType.ALPHA_EXPE:
+        return r'$\alpha$'
+    elif adjustment_type == EvalType.INGAME:
+        return r'$\beta$, in-game'
+    elif adjustment_type == EvalType.ADJUSTED:
+        return r'$\gamma_0$, adjusted'
+    elif adjustment_type == EvalType.FOCUS_ON_ERROR:
+        return r'$\gamma_1$, focus on error'
+    elif adjustment_type == EvalType.FOCUS_ON_TIME:
+        return r'$\gamma_2$, focus on time'
+    else:
+        return adjustment_type.name.lower()
 
 
 def get_error_type_for_adjustment(adjustment_type):
     """ Returns the norm (1 or 2) to be used with the corresponding adjusted performance evaluation function.
-
-    Norm-1 is generally preferred because controlled parameters produced very independant results ; it seems
-     more reasonable to simply add all the errors and normalize the result,
-     rather than taking the root mean square of all errors.
      """
-    if adjustment_type == 2:
+    if adjustment_type == EvalType.ADJUSTED_NORM2:
         return 2
     else:
         return 1
@@ -72,17 +84,27 @@ def adjusted_eval(e, t, allowed_time, adjustment_type=EvalType.ADJUSTED):
         return np.clip(final_score, 0.0, 1.0)
 
     # Bigger importance for the time perf. Gives the same overall average performance than the ADJUSTED.
-    elif adjustment_type == EvalType.FOCUS_ON_TIME:
+    elif adjustment_type == EvalType.FOCUS_ON_TIME:  # GAMMA 2
         max_e = 0.70
         max_t = 1.7 * allowed_time
         final_score = (1.0 - e / max_e) * (1.0 - t / max_t)
         return np.clip(final_score, 0.0, 1.0)
 
     # Bigger importance for the precisio perf. Gives the same overall average performance than the ADJUSTED.
-    elif adjustment_type == EvalType.FOCUS_ON_ERROR:
+    elif adjustment_type == EvalType.FOCUS_ON_ERROR:  # GAMMA 1
         max_e = 0.5
         max_t = 4.0 * allowed_time
         final_score = (1.0 - e / max_e) * (1.0 - t / max_t)
+        return np.clip(final_score, 0.0, 1.0)
+
+    # First score function for alpha (quickly abandonned) experiments. Not displayed to alpha testers.
+    elif adjustment_type == EvalType.ALPHA_EXPE:
+        precision_term = 1.0 - 2.0 * e  # null or negative if norm-1 error > 0.5
+        time_term = 1.0 - t / 90.0  # null after 120 seconds of research
+        independant_score = precision_term + 0.70 * time_term  # might be negative if precision is very bad
+        independant_score = np.clip(independant_score, 0.0, np.inf)  # (negative scores are limited to zero)
+        precision_factor = 1.0 - e
+        final_score = 0.75 * independant_score * precision_factor
         return np.clip(final_score, 0.0, 1.0)
 
     else:
@@ -101,7 +123,7 @@ def expe4_ingame_eval(e, t, allowed_time):
     time_term = 1.0 - t / (allowed_time*1.5)  # always positive, and is at least 1/3
     # Precision has a full 1.0 weight factor, while the time term has a 0.7 weight factor
     independant_score = precision_term + 0.70 * time_term  # might be negative if precision is very bad
-    independant_score = np.clip(independant_score, 0.0, np.inf)  # (negative score are limited to zero)
+    independant_score = np.clip(independant_score, 0.0, np.inf)  # (negative scores are limited to zero)
 
     # Then, as the error is the most important, we'll multiply this temp result with a global precision factor
     # Without this: a random result at t=0 would always give a very good score (because of the time term)
@@ -133,7 +155,7 @@ class Analyzer:
 
     def compare_adjusted(self, adj_types=[EvalType.ADJUSTED, EvalType.FOCUS_ON_TIME, EvalType.FOCUS_ON_ERROR]):
 
-        fig = plt.figure(figsize=(9, 9))  # can't change the projection of an existing axes
+        fig = plt.figure(figsize=(9.5, 9))  # can't change the projection of an existing axes
 
         for i in range(len(adj_types)):
             ax_adj = fig.add_subplot(len(adj_types), 2, 1 + 2*i, projection='3d')
@@ -146,8 +168,8 @@ class Analyzer:
             name = adj_types[i].name.lower()
             if name:
                 name = ' (' + name + ')'
-            ax_adj.set(title='Perf. eval. function #{}{}'.format(str(adj_types[i].value), name),
-                       xlabel='Norm-{} error $e$'.format(str(get_error_type_for_adjustment(adj_types[i]))))
+            ax_adj.set(title='Perf. evaluation function {}'.format(get_perf_eval_name(adj_types[i])),
+                       xlabel='Norm. sum of errors $e$')
             fig.colorbar(surf, aspect=18)
 
             ax_adj_hist = fig.add_subplot(len(adj_types), 2, 2 + 2*i)
@@ -157,7 +179,7 @@ class Analyzer:
             ax_adj_hist.axvline(np.mean(adjusted_s), color='r', linestyle='--')
             plt.legend(['mean'])
 
-            self._configure_perf_hist_kde_axes(ax_adj_hist, adjusted_s)
+            self._configure_perf_hist_kde_axes(ax_adj_hist, adj_types[i])
 
         plt.tight_layout()
         fig.subplots_adjust(left=0.05)
@@ -174,7 +196,7 @@ class Analyzer:
                                    linewidth=0, cmap=cm.plasma)
         self._configure_perf_surface_axes(ax_adj)  # many configs will be overriden just after
         ax_adj.set(xlabel='$e$, normalized sum of errors')
-        ax_adj.set(ylabel='$d$, research duration [s]', zlabel=r'$s$, performance')
+        ax_adj.set(ylabel='$d$, search duration [s]', zlabel=r'$s$, performance')
         ax_adj.set_xlim(0.0, 0.8)
         ax_adj.set_xticks(np.linspace(0.0, 0.8, 5))
         fig.colorbar(surf, aspect=18, pad=0.1)
@@ -189,10 +211,10 @@ class Analyzer:
         ax.elev = self.elevation_angle
         ax.azim = self.azimuth_angle
         # y and z labels never change
-        ax.set(ylabel='Research duration $d$ [s]', zlabel=r'Performance $s$')
+        ax.set(ylabel='Search duration $d$ [s]', zlabel=r'Performance $s$')
 
-    def _configure_perf_hist_kde_axes(self, ax, s_values):
+    def _configure_perf_hist_kde_axes(self, ax, perf_eval_type):
         ax.set_xlim(0.0, 1.0)
-        ax.set(title='Corresponding histogram and KDE',
-               xlabel='Performances $s$ (sample of {} values)'.format(len(s_values)),
-               ylabel='Normalized counts, estimated PDF')
+        ax.set(title='Obtained performances ({})'.format(get_perf_eval_name(perf_eval_type)),
+               xlabel='Performance $s$',
+               ylabel='Scaled counts, estimated PDF')
