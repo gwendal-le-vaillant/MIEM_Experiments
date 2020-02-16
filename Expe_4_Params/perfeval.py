@@ -169,7 +169,7 @@ class Analyzer:
             if name:
                 name = ' (' + name + ')'
             ax_adj.set(title='Perf. evaluation function {}'.format(get_perf_eval_name(adj_types[i])),
-                       xlabel='Norm. sum of errors $e$')
+                       xlabel='Norm. sum of errors $E$')
             fig.colorbar(surf, aspect=18)
 
             ax_adj_hist = fig.add_subplot(len(adj_types), 2, 2 + 2*i)
@@ -195,8 +195,8 @@ class Analyzer:
                                                                            adjustment_type=EvalType.ADJUSTED),
                                    linewidth=0, cmap=cm.plasma)
         self._configure_perf_surface_axes(ax_adj)  # many configs will be overriden just after
-        ax_adj.set(xlabel='$e$, normalized sum of errors')
-        ax_adj.set(ylabel='$d$, search duration [s]', zlabel=r'$s$, performance')
+        ax_adj.set(xlabel='$E$, normalized sum of errors')
+        ax_adj.set(ylabel='$D$, search duration [s]', zlabel=r'$S$, performance')
         ax_adj.set_xlim(0.0, 0.8)
         ax_adj.set_xticks(np.linspace(0.0, 0.8, 5))
         fig.colorbar(surf, aspect=18, pad=0.1)
@@ -211,10 +211,10 @@ class Analyzer:
         ax.elev = self.elevation_angle
         ax.azim = self.azimuth_angle
         # y and z labels never change
-        ax.set(ylabel='Search duration $d$ [s]', zlabel=r'Performance $s$')
+        ax.set(ylabel='Search duration $D$ [s]', zlabel=r'Performance $S$')
 
     def _configure_perf_hist_kde_axes(self, ax, perf_eval_type):
         ax.set_xlim(0.0, 1.0)
         ax.set(title='Obtained performances ({})'.format(get_perf_eval_name(perf_eval_type)),
-               xlabel='Performance $s$',
+               xlabel='Performance $S$',
                ylabel='Scaled counts, estimated PDF')

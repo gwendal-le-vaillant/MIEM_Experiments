@@ -72,19 +72,19 @@ class SubjectPerformancesVisualizer:
         self.update_plot(subject)
 
     def update_plot(self, subject):
-        plt.suptitle("Durations $d$, errors $e$ and performances $s$ for subject #"
+        plt.suptitle("Durations $D$, errors $E$ and performances $S$ for subject #"
                      + str(subject.index))
 
         synths_ids = self.expe.global_params.get_synths_ids()
 
         self.axes[0].clear()
-        self.axes[0].set(ylabel="Search duration $d$")
+        self.axes[0].set(ylabel="Search duration $D$")
         self.axes[0].scatter(synths_ids, subject.d[:, 0], marker='s')
         self.axes[0].scatter(synths_ids, subject.d[:, 1], marker='D')
         self.axes[0].set_ylim([0, subject.global_params.allowed_time])  # hides the -1 unvalid values
 
         self.axes[1].clear()
-        self.axes[1].set(ylabel="Normalized error $e$")
+        self.axes[1].set(ylabel="Normalized error $E$")
         self.axes[1].scatter(synths_ids, subject.e_norm1[:, 0], marker='s')
         self.axes[1].scatter(synths_ids, subject.e_norm1[:, 1], marker='D')
         self.axes[1].set_ylim([0, 1])  # hides the -1 unvalid values
@@ -253,7 +253,7 @@ def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display
     else:
         ax.legend(loc='best')
         ax.set(title="Performances of all subjects (eval. function {})".format(perfeval.get_perf_eval_name(perf_eval_type)),
-               xlabel=r"Performance score $s$", ylabel="Scaled counts and estimated PDF")
+               xlabel=r"Performance score $S$", ylabel="Scaled counts and estimated PDF")
 
     # Komolgorov-Smirnov test using scipy stats. The null hypothesis is 'the 2 samples are drawn from
     # the same distribution'. Null hypothesis can be rejected is p-value is small.
@@ -287,7 +287,7 @@ def plot_all_perfs_per_synth(expe, plottype='box', perf_eval_type=perfeval.EvalT
     else:
         ax.set(title="Performances of all subjects, per synth (eval. function {})"
                .format(perfeval.get_perf_eval_name(perf_eval_type)),
-               xlabel="Synth ID ", ylabel="Performance $s$")
+               xlabel="Synth ID ", ylabel="Performance $S$")
 
     # box plot of all S perfs data, with empty space after each synth
     synths_range = range(expe.global_params.synths_trial_count*2, expe.global_params.synths_count * 2)
@@ -372,7 +372,7 @@ def plot_all_perfs_histograms_by_synth(expe, perf_eval_type=perfeval.EvalType.AD
 
         ax = fig.add_subplot(n_rows, n_cols, synth_index+1)
         ax.set(title="Synth ID={}".format(synth_index),
-               xlabel="Performance score", ylabel="Observations, estimated PDF")
+               xlabel="Performance score S", ylabel="Observations, estimated PDF")
 
         sns.distplot(sliders_s, rug=True, hist=False)
         sns.distplot(interp_s, rug=True, hist=False)
@@ -461,7 +461,7 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
         ax.set_ylabel("Average performances", fontdict={'fontsize': 12})
     else:
         ax.set(title="Average performance of subjects, related to their expertise",
-               xlabel="Estimated expertise level", ylabel="Average performance $s$")
+               xlabel="Estimated expertise level", ylabel="Average performance score")
 
     regplot0 = sns.regplot(x=expertise_levels, y=mean_s[0, :], order=faders_reg_degree,
                            label="Sliders", marker='o')
