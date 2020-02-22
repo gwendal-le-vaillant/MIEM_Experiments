@@ -429,7 +429,7 @@ def plot_all_perfs_by_expertise(expe, perf_eval_type, add_swarm_plot=False):
 
 
 def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
-    assert len(expe.subjects[0].mean_s_ingame) == 2, 'Works for 2 methods only (fader + interp)'
+    assert len(expe.subjects[0].mean_s_ingame) == 2, 'Works for 2 methods only (sliders vs. interp)'
 
     # Degrees of polynomial regressions
     faders_reg_degree = 2  # best seems to be 2 (in terms of R2 and RMSE)  # TODO re-check if 1 is enough
@@ -480,6 +480,25 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
 
     fig.tight_layout()
     figurefiles.save_in_figures_folder(fig, "Perf_vs_expertise_eval{}.pdf".format(perf_eval_type))
+
+    # Finally : KS-test (on very small samples at the moment...) on interp average perfs
+    perfs_by_expertise = list()  # list of arrays. Index 0 is expertise 1, ... etc.
+    display_str = "Number of subjects per expertise level (from {} to {}):   ".format(min(expertise_levels),
+                                                                                      max(expertise_levels))
+    for i in range(max(expertise_levels) - min(expertise_levels) + 1):
+        average_perfs = [subject.get_mean_s_adjusted(perf_eval_type)[1] for subject in expe.subjects
+                         if subject.expertise_level == (i+min(expertise_levels))]
+        perfs_by_expertise.append(np.asarray(average_perfs))
+        display_str = display_str + " n={}  ".format(len(average_perfs))
+    print(display_str)
+    # Actual KS-tests (triangular pattern: 1vs(2,3,4), 2vs(3,4), 3vs4....)
+    display_str = "KS-test, for average scores (sorted by expertise level): "
+    for i in range(max(expertise_levels) - min(expertise_levels) + 1):
+        for j in range(i+1, max(expertise_levels) - min(expertise_levels) + 1):
+            [KS_stat, p_value] = stats.ks_2samp(perfs_by_expertise[i], perfs_by_expertise[j])
+            display_str = display_str + "  {}vs{}: p-value={}  ".format(i+min(expertise_levels),
+                                                                        j+min(expertise_levels), p_value)
+    print(display_str)
 
 
 def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
