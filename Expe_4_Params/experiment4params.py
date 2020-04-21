@@ -45,7 +45,7 @@ perfs_analyzer = perfeval.Analyzer(expe4)
 # edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.FOCUS_ON_TIME)
 # edd.plot_all_perfs_by_expertise(expe4, perfeval.EvalType.FOCUS_ON_ERROR)
 # ----- ----- 3 d) Average perfs of subjects, sorted by method and expertise level
-edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.ADJUSTED, show_fit_analysis=False)
+edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.ADJUSTED, show_fit_analysis=True)
 # edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_TIME)
 # edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.FOCUS_ON_ERROR)
 # edd.fit_perf_vs_expertise(expe4, perf_eval_type=perfeval.EvalType.INGAME)

@@ -16,7 +16,7 @@ import perfeval
 
 # Optimized (smaller) graphs, shortened titles and legends, etc.
 # For figures to fit in a 6-page article
-use_nime20_notations = False
+use_nime20_notations = True
 
 
 def plot_age_and_sex(expe):
@@ -235,7 +235,7 @@ def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display
     kde_bw = 0.05
 
     if use_nime20_notations:
-        fig = plt.figure(figsize=(4, 2.6))
+        fig = plt.figure(figsize=(4.5, 2.0))
     else:
         fig = plt.figure(figsize=(7, 3))
     ax = fig.add_subplot(111)
@@ -247,9 +247,9 @@ def all_perfs_histogram(expe, perf_eval_type=perfeval.EvalType.ADJUSTED, display
                              kde=True, kde_kws={"bw": kde_bw}, ax=ax, label='Interpolation')
     ax.set_xlim(0.0, 1.0)
     if use_nime20_notations:
-        ax.legend(loc='best', bbox_to_anchor=(0.50, 0.7))
-        ax.set(xlabel="Performance scores", ylabel="Scaled counts, estimated PDF")
-        ax.set_ylim(0.0, 2.9)
+        ax.legend(loc='best')  #, bbox_to_anchor=(0.50, 0.7))
+        ax.set(xlabel="Performance scores", ylabel="Scaled counts,\nestimated PDF")
+        ax.set_ylim(0.0, 3.7)
     else:
         ax.legend(loc='best')
         ax.set(title="Performances of all subjects (eval. function {})".format(perfeval.get_perf_eval_name(perf_eval_type)),
@@ -452,7 +452,7 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
 
     # Seaborn fit graph (underlying functions: np.polyfit)
     if use_nime20_notations:
-        fig = plt.figure(figsize=(5, 3.6))
+        fig = plt.figure(figsize=(5.5, 3))
     else:
         fig = plt.figure(figsize=(6, 4))
     ax = fig.add_subplot()
@@ -468,7 +468,10 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     regplot1 = sns.regplot(x=expertise_levels, y=mean_s[1, :], order=interp_reg_degree,
                            label="Interpolation", marker='+')
 
-    ax.set_ylim([0, 1])
+    if not use_nime20_notations:
+        ax.set_ylim([0, 1])
+    else:
+        ax.set_ylim([0, 0.8])
     ax.set_xlim([min(expertise_levels)-0.5, max(expertise_levels)+0.5])
     ax.set_xticks(range(min(expertise_levels), max(expertise_levels)+1))
     ax.grid(axis='y')
@@ -481,24 +484,27 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     fig.tight_layout()
     figurefiles.save_in_figures_folder(fig, "Perf_vs_expertise_eval{}.pdf".format(perf_eval_type))
 
-    # Finally : KS-test (on very small samples at the moment...) on interp average perfs
-    perfs_by_expertise = list()  # list of arrays. Index 0 is expertise 1, ... etc.
-    display_str = "Number of subjects per expertise level (from {} to {}):   ".format(min(expertise_levels),
-                                                                                      max(expertise_levels))
-    for i in range(max(expertise_levels) - min(expertise_levels) + 1):
-        average_perfs = [subject.get_mean_s_adjusted(perf_eval_type)[1] for subject in expe.subjects
-                         if subject.expertise_level == (i+min(expertise_levels))]
-        perfs_by_expertise.append(np.asarray(average_perfs))
-        display_str = display_str + " n={}  ".format(len(average_perfs))
-    print(display_str)
-    # Actual KS-tests (triangular pattern: 1vs(2,3,4), 2vs(3,4), 3vs4....)
-    display_str = "KS-test, for average scores (sorted by expertise level): "
-    for i in range(max(expertise_levels) - min(expertise_levels) + 1):
-        for j in range(i+1, max(expertise_levels) - min(expertise_levels) + 1):
-            [KS_stat, p_value] = stats.ks_2samp(perfs_by_expertise[i], perfs_by_expertise[j])
-            display_str = display_str + "  {}vs{}: p-value={}  ".format(i+min(expertise_levels),
-                                                                        j+min(expertise_levels), p_value)
-    print(display_str)
+    # Finally : KS-test on sliders and interp average perfs
+    # However, the KS-test is not really relevant on such small samples...
+    for jbis in (0, 1):
+        perfs_by_expertise = list()  # list of arrays. Index 0 is expertise 1, ... etc.
+        display_str = "{} - Number of subjects per expertise level (from {} to {}):   ".format(jbis,
+                                                                                               min(expertise_levels),
+                                                                                               max(expertise_levels))
+        for ii in range(max(expertise_levels) - min(expertise_levels) + 1):
+            average_perfs = [subject.get_mean_s_adjusted(perf_eval_type)[jbis] for subject in expe.subjects
+                             if subject.expertise_level == (ii+min(expertise_levels))]
+            perfs_by_expertise.append(np.asarray(average_perfs))
+            display_str = display_str + " n={}  ".format(len(average_perfs))
+        print(display_str)
+        # Actual KS-tests (triangular pattern: 1vs(2,3,4), 2vs(3,4), 3vs4....)
+        display_str = "KS-test, for average scores (sorted by expertise level): "
+        for ii in range(max(expertise_levels) - min(expertise_levels) + 1):
+            for iii in range(ii+1, max(expertise_levels) - min(expertise_levels) + 1):
+                [KS_stat, p_value] = stats.ks_2samp(perfs_by_expertise[ii], perfs_by_expertise[iii])
+                display_str = display_str + "  {}vs{}: p-value={}  ".format(ii+min(expertise_levels),
+                                                                            iii+min(expertise_levels), p_value)
+        print(display_str)
 
 
 def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
@@ -549,7 +555,7 @@ def analyse_goodness_of_fit(x_data, y_data, poly_fit, fit_name):
 def plot_opinions_on_methods(expe):
 
     if use_nime20_notations:
-        fig = plt.figure(figsize=(4.8, 2.5))
+        fig = plt.figure(figsize=(5.5, 1.7))
     else:
         fig = plt.figure(figsize=(7, 3))
     ax = fig.add_subplot(111)
@@ -557,7 +563,7 @@ def plot_opinions_on_methods(expe):
     # We rely on a pre-computed pandas dataframe for this
     expe.opinions.plot.bar(rot=0, ax=ax)
     if use_nime20_notations:
-        ax.set(ylabel='Number of individuals', xlabel='Characteristic asked')
+        ax.set(ylabel='Number of\nindividuals', xlabel='Characteristic asked')
     else:
         ax.set(title='Answers to the questions: which method was the [...]?',
                ylabel='Amount of subjects', xlabel='Characteristic asked')
@@ -565,7 +571,10 @@ def plot_opinions_on_methods(expe):
     max_displayed_y = int(math.floor( expe.opinions.max().max() * 1.2))
 
     if use_nime20_notations:
-        ax.legend(loc='upper center', bbox_to_anchor=(0.38, 1.02))
+        max_displayed_y = expe.opinions.max().max() + 1.0
+        # Manuel x ticks, optimized dislay for paper
+        ax.legend(loc='upper center', bbox_to_anchor=(1.30, 1.0))
+        ax.set_xticklabels(["fastest", "most\nprecise", "most\nintuitive", "preferred"])
     else:
         ax.legend(loc='upper center', bbox_to_anchor=(0.38, 1.00))
     ax.set_ylim([0, max_displayed_y])
