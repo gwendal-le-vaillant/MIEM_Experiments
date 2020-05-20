@@ -16,7 +16,7 @@ import perfeval
 
 # Optimized (smaller) graphs, shortened titles and legends, etc.
 # For figures to fit in a 6-page article
-use_nime20_notations = True
+use_nime20_notations = False
 
 
 def plot_age_and_sex(expe):
@@ -398,7 +398,8 @@ def plot_all_perfs_histograms_by_synth(expe, perf_eval_type=perfeval.EvalType.AD
             # (replaces Mann-Whitney U test, non parametric, OK for small samples)
             print("Synth {}:".format(j - expe.global_params.synths_trial_count))
             [w_stat, p_value] = stats.wilcoxon(x=sliders_s, y=interp_s)  # implementation requires n>20
-            print("    Wilcoxon signed-rank test: stat={:0.2f}, p-value={:0.4f}".format(w_stat, p_value))
+            print("    Wilcoxon signed-rank test: stat={:0.2f}, p-value={:0.4f} {}"
+                  .format(w_stat, p_value,  ("(different) " if p_value<0.05 else "(maybe identical)" )))
             # U should be compared to U_critical
             #[u_stat, u_p_value] = stats.mannwhitneyu(sliders_s, interp_s, alternative="two-sided")
             #print("    (M-W U: U-stat={:0.2f}, p-value={:0.4f})".format(u_stat, u_p_value))
@@ -464,14 +465,14 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
                xlabel="Estimated expertise level", ylabel="Average performance score")
 
     regplot0 = sns.regplot(x=expertise_levels, y=mean_s[0, :], order=faders_reg_degree,
-                           label="Sliders", marker='o')
+                           label="Sliders", marker='x', scatter_kws={'alpha':0.9})
     regplot1 = sns.regplot(x=expertise_levels, y=mean_s[1, :], order=interp_reg_degree,
-                           label="Interpolation", marker='+')
+                           label="Interpolation", marker='+', scatter_kws={'alpha':0.6})
 
     if not use_nime20_notations:
         ax.set_ylim([0, 1])
     else:
-        ax.set_ylim([0, 0.8])
+        ax.set_ylim([0.2, 0.7])
     ax.set_xlim([min(expertise_levels)-0.5, max(expertise_levels)+0.5])
     ax.set_xticks(range(min(expertise_levels), max(expertise_levels)+1))
     ax.grid(axis='y')
@@ -488,9 +489,8 @@ def fit_perf_vs_expertise(expe, perf_eval_type, show_fit_analysis=False):
     # However, the KS-test is not really relevant on such small samples...
     for jbis in (0, 1):
         perfs_by_expertise = list()  # list of arrays. Index 0 is expertise 1, ... etc.
-        display_str = "{} - Number of subjects per expertise level (from {} to {}):   ".format(jbis,
-                                                                                               min(expertise_levels),
-                                                                                               max(expertise_levels))
+        display_str = "{} - Number of subjects per expertise level (from {} to {}):   "\
+            .format(edp.MethodType(jbis).name.lower(), min(expertise_levels), max(expertise_levels))
         for ii in range(max(expertise_levels) - min(expertise_levels) + 1):
             average_perfs = [subject.get_mean_s_adjusted(perf_eval_type)[jbis] for subject in expe.subjects
                              if subject.expertise_level == (ii+min(expertise_levels))]

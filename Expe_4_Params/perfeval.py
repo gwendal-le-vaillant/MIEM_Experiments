@@ -21,7 +21,11 @@ class EvalType(IntEnum):
     FOCUS_ON_TIME = 4
     FOCUS_ON_ERROR = 5
     ALPHA_EXPE = 6  # First score, quickly removed (not displayed to alpha testers)
-    COUNT = 7
+    FOCUS_EXTREME_ON_TIME = 7  # TODO
+    TIME_ONLY = 8  # TODO
+    ERROR_ONLY = 9  # TODO
+    ERROR_ONLY_2 = 10  # TODO
+    COUNT = 11
 
 
 def get_perf_eval_name(adjustment_type):
@@ -75,9 +79,9 @@ def adjusted_eval(e, t, allowed_time, adjustment_type=EvalType.ADJUSTED):
     # ---> Advantages/disadvantages (compared to in-game perf eval function):
     # + removes possible random answers (more strict about huge errors)
     # + centers the overall average performance around 0.5
-    # + very simple formula
+    # + very simple formula (linear decrease of score, on both axes)
     # - is not exactly the perf displayed during the gamified experiment
-    elif adjustment_type == EvalType.ADJUSTED:
+    elif adjustment_type == EvalType.ADJUSTED:  # 47% overall average score
         max_e = 0.55  # 0.5 in norm-1 is already a quite large error...
         max_t = 2.5 * allowed_time
         final_score = (1.0 - e / max_e) * (1.0 - t / max_t)
@@ -105,6 +109,26 @@ def adjusted_eval(e, t, allowed_time, adjustment_type=EvalType.ADJUSTED):
         independant_score = np.clip(independant_score, 0.0, np.inf)  # (negative scores are limited to zero)
         precision_factor = 1.0 - e
         final_score = 0.75 * independant_score * precision_factor
+        return np.clip(final_score, 0.0, 1.0)
+
+    elif adjustment_type == EvalType.FOCUS_EXTREME_ON_TIME:  # WARNING: does not reject bad results...
+        max_e = 1.0
+        max_t = 1.3 * allowed_time
+        final_score = (1.0 - e / max_e) * (1.0 - t / max_t)
+        return np.clip(final_score, 0.0, 1.0)
+    elif adjustment_type == EvalType.TIME_ONLY:  # WARNING: no error factor
+        max_e = 1.0
+        max_t = 1.04 * allowed_time
+        final_score = (1.0) * (1.0 - t / max_t)  # no error factor
+        return np.clip(final_score, 0.0, 1.0)
+
+    elif adjustment_type == EvalType.ERROR_ONLY:  # WARNING: time is not considered
+        max_e = 0.41  # To get a 47% average score
+        final_score = (1.0 - e / max_e) * (1.0)  # no time-decreasing factor
+        return np.clip(final_score, 0.0, 1.0)
+    elif adjustment_type == EvalType.ERROR_ONLY_2:  # WARNING: time is not considered, and >> 50% average score
+        max_e = 1.0
+        final_score = (1.0 - e / max_e) * (1.0)  # no time-decreasing factor
         return np.clip(final_score, 0.0, 1.0)
 
     else:
